@@ -111,9 +111,15 @@ def main() -> None:
     batch_size = cfg.get("batch_size", 4)
     imgsz      = cfg.get("image_size", 320)
     patience   = cfg.get("patience", 5)
-    device     = cfg.get("device", "cpu")
-    workers    = cfg.get("workers", 0)
-    output_dir = _PROJECT_ROOT / cfg.get("output_dir", "artifacts/models/pcb_yolov8n")
+    device     = cfg.pop("device", "cpu")
+    workers    = cfg.pop("workers", 0)
+    output_dir = _PROJECT_ROOT / cfg.pop("output_dir", "artifacts/models/pcb_yolov8n")
+    
+    # Any remaining keys in cfg are extra kwargs for YOLO
+    extra_kwargs = cfg.copy()
+    for k in ["model", "epochs", "batch_size", "image_size", "patience", "seed"]:
+        extra_kwargs.pop(k, None)
+
 
     from configs.settings import DATASET_YAML, REPORTS_DIR, ARTIFACTS_DIR
 
@@ -173,7 +179,7 @@ def main() -> None:
     logger.info("Started MLflow run: %s", run.info.run_id)
     
     # Log parameters
-    mlflow.log_params({
+    log_params = {
         "model": model_name,
         "epochs": epochs,
         "batch_size": batch_size,
@@ -183,7 +189,9 @@ def main() -> None:
         "workers": workers,
         "seed": seed,
         "dataset_yaml": str(DATASET_YAML)
-    })
+    }
+    log_params.update(extra_kwargs)
+    mlflow.log_params(log_params)
 
     model = YOLO(model_name)   # loads pretrained COCO weights
 
@@ -208,6 +216,7 @@ def main() -> None:
         cos_lr=False,       # simple LR schedule
         amp=False,          # no mixed precision on CPU
         pretrained=True,    # use COCO pretrained weights
+        **extra_kwargs,
     )
 
     t_elapsed = time.time() - t_start
