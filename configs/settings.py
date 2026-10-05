@@ -32,13 +32,7 @@ PROJECT_ROOT = _HERE.parent                   # VisionQC/
 # ---------------------------------------------------------------------------
 # Raw dataset
 # ---------------------------------------------------------------------------
-_DEFAULT_DATASET_DIR = (
-    PROJECT_ROOT.parent
-    / "PCB-Defect An Annotated Dataset for Surface Defect"
-    / "PCB-Defect An Annotated Dataset for Surface Defect"
-    / "PCB_Defect"
-    / "PCB_Defect"
-)
+_DEFAULT_DATASET_DIR = PROJECT_ROOT / "data" / "raw" / "rashid"
 
 DATASET_DIR: Path = Path(
     os.environ.get("VISIONQC_DATASET_DIR", str(_DEFAULT_DATASET_DIR))
@@ -121,6 +115,7 @@ YOLO_CLASS_NAMES: list[str] = [
     "short",           # model ID 3
     "spur",            # model ID 4
     "spurious_copper", # model ID 5
+    "missing_hole",    # model ID 6 (Mendeley dataset specific)
 ]
 
 # BGR colour palette for OpenCV bbox drawing (indexed by YOLO class ID 0-5)
@@ -131,6 +126,7 @@ DEFECT_COLOURS_BY_MODEL_ID: dict[int, tuple[int, int, int]] = {
     3: (255, 220,  50),   # short
     4: (255, 100, 255),   # spur
     5: ( 50, 220, 255),   # spurious_copper
+    6: (200, 150, 100),   # missing_hole
 }
 
 # Legacy mapping for GT visualizer (COCOAnnotationPredictor, Phase 1 COCO IDs)

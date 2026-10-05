@@ -1,53 +1,53 @@
 {
-  "experiment": "pcb_yolov8n_exp_b",
+  "experiment": "pcb_yolov8n_baseline",
   "model_path": "artifacts\\models\\pcb_yolov8n\\weights\\best.pt",
   "dataset_yaml": "C:\\Users\\dell\\OneDrive\\Desktop\\MLOPS CP\\VisionQC\\data\\prepared\\dataset.yaml",
   "evaluation_split": "test",
-  "evaluation_duration_s": 20.3,
+  "evaluation_duration_s": 5.9,
   "overall_metrics": {
-    "precision": 0.4478,
-    "recall": 0.0359,
-    "mAP50": 0.0337,
-    "mAP50_95": 0.0083
+    "precision": 0.247,
+    "recall": 0.1668,
+    "mAP50": 0.165,
+    "mAP50_95": 0.067
   },
   "per_class_metrics": {
     "missing_pad": {
-      "precision": 0.0253,
+      "precision": 0.1123,
       "recall": 0.0227,
-      "ap50": 0.0205
+      "ap50": 0.051
     },
     "mouse_bite": {
-      "precision": 1.0,
+      "precision": 0.0,
       "recall": 0.0,
-      "ap50": 0.0006
+      "ap50": 0.0141
     },
     "open_circuit": {
-      "precision": 0.2921,
-      "recall": 0.0638,
-      "ap50": 0.072
+      "precision": 0.4386,
+      "recall": 0.2553,
+      "ap50": 0.2422
     },
     "short": {
-      "precision": 0.2151,
-      "recall": 0.0732,
-      "ap50": 0.0531
+      "precision": 0.5243,
+      "recall": 0.1951,
+      "ap50": 0.1987
     },
     "spur": {
-      "precision": 1.0,
+      "precision": 0.0,
       "recall": 0.0,
-      "ap50": 0.0038
+      "ap50": 0.0221
     },
     "spurious_copper": {
-      "precision": 0.1541,
-      "recall": 0.0557,
-      "ap50": 0.0523
+      "precision": 0.4066,
+      "recall": 0.5278,
+      "ap50": 0.4621
     }
   },
   "inference_latency": {
     "samples_measured": 20,
-    "mean_ms": 103.2,
-    "min_ms": 64.2,
-    "max_ms": 246.6,
-    "p95_ms": 194.6
+    "mean_ms": 104.0,
+    "min_ms": 57.6,
+    "max_ms": 215.0,
+    "p95_ms": 202.9
   },
   "note": "All metrics from actual model inference on the held-out test split."
 }

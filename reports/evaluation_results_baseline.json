@@ -1,53 +1,53 @@
 {
   "experiment": "baseline",
-  "model_path": "artifacts\\models\\pcb_yolov8n_baseline\\weights\\best.pt",
+  "model_path": "C:\\Users\\dell\\OneDrive\\Desktop\\MLOPS CP\\VisionQC\\artifacts\\models\\pcb_yolov8n_640\\weights\\best.pt",
   "dataset_yaml": "C:\\Users\\dell\\OneDrive\\Desktop\\MLOPS CP\\VisionQC\\data\\prepared\\dataset.yaml",
   "evaluation_split": "test",
-  "evaluation_duration_s": 12.1,
+  "evaluation_duration_s": 9.5,
   "overall_metrics": {
-    "precision": 0.247,
-    "recall": 0.1668,
-    "mAP50": 0.165,
-    "mAP50_95": 0.067
+    "precision": 0.8192,
+    "recall": 0.6954,
+    "mAP50": 0.7527,
+    "mAP50_95": 0.361
   },
   "per_class_metrics": {
     "missing_pad": {
-      "precision": 0.1123,
-      "recall": 0.0227,
-      "ap50": 0.051
+      "precision": 0.8386,
+      "recall": 0.5455,
+      "ap50": 0.6697
     },
     "mouse_bite": {
-      "precision": 0.0,
-      "recall": 0.0,
-      "ap50": 0.0141
+      "precision": 0.6444,
+      "recall": 0.4259,
+      "ap50": 0.447
     },
     "open_circuit": {
-      "precision": 0.4386,
-      "recall": 0.2553,
-      "ap50": 0.2422
+      "precision": 0.7996,
+      "recall": 0.7639,
+      "ap50": 0.8004
     },
     "short": {
-      "precision": 0.5243,
-      "recall": 0.1951,
-      "ap50": 0.1987
+      "precision": 0.8846,
+      "recall": 0.8537,
+      "ap50": 0.8896
     },
     "spur": {
-      "precision": 0.0,
-      "recall": 0.0,
-      "ap50": 0.0221
+      "precision": 0.9899,
+      "recall": 0.6667,
+      "ap50": 0.789
     },
     "spurious_copper": {
-      "precision": 0.4066,
-      "recall": 0.5278,
-      "ap50": 0.4621
+      "precision": 0.7579,
+      "recall": 0.9167,
+      "ap50": 0.9207
     }
   },
   "inference_latency": {
     "samples_measured": 20,
-    "mean_ms": 251.2,
-    "min_ms": 121.2,
-    "max_ms": 786.3,
-    "p95_ms": 573.7
+    "mean_ms": 164.9,
+    "min_ms": 115.8,
+    "max_ms": 305.8,
+    "p95_ms": 220.4
   },
   "note": "All metrics from actual model inference on the held-out test split."
 }

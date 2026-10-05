@@ -97,6 +97,19 @@ def main() -> None:
     print(f"  Dataset:  {DATASET_YAML}")
     print()
 
+    # 0.5 Setup MLflow
+    import mlflow
+    mlflow.set_tracking_uri("sqlite:///mlflow.db")
+    mlflow.set_experiment("VisionQC_Evaluation")
+    
+    run = mlflow.start_run(run_name=f"eval_{name}")
+    logger.info("Started MLflow run: %s", run.info.run_id)
+    mlflow.log_params({
+        "model_path": str(model_path),
+        "dataset_yaml": str(DATASET_YAML),
+        "experiment_name": name
+    })
+
     # 1. Evaluate on test split
     t_start = time.time()
     test_results = model.val(
@@ -166,6 +179,22 @@ def main() -> None:
     (REPORTS_DIR / "evaluation_results.json").write_text(
         json.dumps(results_dict, indent=2, default=str), encoding="utf-8"
     )
+
+    # 6.5 MLflow Log Metrics and Artifacts
+    try:
+        if mlflow.active_run():
+            if precision is not None: mlflow.log_metric("test_precision", precision)
+            if recall is not None: mlflow.log_metric("test_recall", recall)
+            if map50 is not None: mlflow.log_metric("test_mAP50", map50)
+            if map50_95 is not None: mlflow.log_metric("test_mAP50_95", map50_95)
+            
+            if latency:
+                mlflow.log_metric("test_latency_mean_ms", latency.get("mean_ms", 0))
+                mlflow.log_metric("test_latency_p95_ms", latency.get("p95_ms", 0))
+                
+            mlflow.log_artifact(str(json_path))
+    except Exception as e:
+        logger.warning("MLflow logging failed: %s", e)
 
     # 7. Markdown report
     def _fmt(v, n=4):
@@ -238,6 +267,10 @@ def main() -> None:
     print(f"  JSON: {json_path}")
     print(f"  MD:   {md_path}")
     print()
+
+    # Close MLflow run
+    import mlflow
+    mlflow.end_run()
 
 
 if __name__ == "__main__":

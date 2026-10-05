@@ -161,6 +161,30 @@ def main() -> None:
     # 5. Train
     t_start = time.time()
 
+    import mlflow
+    mlflow.set_tracking_uri("sqlite:///mlflow.db")
+    mlflow.set_experiment("VisionQC_Training")
+    
+    # We will log the run with the experiment name in MLflow
+    # Using output_dir.name as run name, usually it is something like pcb_yolov8n
+    run_name = args.config.stem if args.config else output_dir.name
+    
+    run = mlflow.start_run(run_name=run_name)
+    logger.info("Started MLflow run: %s", run.info.run_id)
+    
+    # Log parameters
+    mlflow.log_params({
+        "model": model_name,
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "image_size": imgsz,
+        "patience": patience,
+        "device": device,
+        "workers": workers,
+        "seed": seed,
+        "dataset_yaml": str(DATASET_YAML)
+    })
+
     model = YOLO(model_name)   # loads pretrained COCO weights
 
     results = model.train(
@@ -251,6 +275,40 @@ def main() -> None:
         json.dumps(run_record, indent=2, default=str), encoding="utf-8"
     )
 
+    # 8.5 MLflow Log Metrics and Artifacts
+    try:
+        import mlflow
+        if mlflow.active_run():
+            # Log metrics
+            if val_metrics:
+                mlflow.log_metrics({
+                    "val_precision": val_metrics.get("metrics/precision(B)") or 0,
+                    "val_recall": val_metrics.get("metrics/recall(B)") or 0,
+                    "val_mAP50": val_metrics.get("metrics/mAP50(B)") or 0,
+                    "val_mAP50_95": val_metrics.get("metrics/mAP50-95(B)") or 0,
+                })
+            
+            mlflow.log_metric("duration_seconds", t_elapsed)
+            
+            # Log artifacts
+            if weights_dst.exists():
+                mlflow.log_artifact(str(weights_dst), artifact_path="model_weights")
+            
+            if run_record_path.exists():
+                mlflow.log_artifact(str(run_record_path))
+                
+            results_csv = output_dir / "results.csv"
+            if results_csv.exists():
+                mlflow.log_artifact(str(results_csv))
+                
+            confusion_matrix = output_dir / "confusion_matrix.png"
+            if confusion_matrix.exists():
+                mlflow.log_artifact(str(confusion_matrix))
+                
+            logger.info("MLflow tracking completed.")
+    except Exception as e:
+        logger.warning("MLflow logging failed: %s", e)
+
     # 9. Print summary
     print()
     print("=" * 62)
@@ -268,8 +326,13 @@ def main() -> None:
     print()
     print(f"  Full run record: {run_record_path}")
     print()
+    print()
     print("  Next step: python scripts/evaluate.py")
     print()
+
+    # Close MLflow run
+    import mlflow
+    mlflow.end_run()
 
 
 if __name__ == "__main__":

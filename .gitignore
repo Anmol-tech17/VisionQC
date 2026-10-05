@@ -36,7 +36,7 @@ desktop.ini
 # ===== VisionQC project-specific =====
 
 # Raw dataset (too large for Git, versioned with DVC later)
-data/raw/
+# (Managed by DVC's own .gitignore in data/raw)
 
 # Prepared YOLO dataset (generated — regenerate with scripts/prepare_dataset.py)
 data/prepared/
@@ -56,7 +56,7 @@ yolov8n.pt
 
 # MLflow / DVC (future phases)
 mlruns/
-.dvc/
+mlflow.db
 
 # Secrets / environment files
 .env

@@ -1,0 +1,6 @@
+outs:
+- md5: f4dbfe5a24963aa9dadbabf1986d91c4.dir
+  size: 228064919
+  nfiles: 3484
+  hash: md5
+  path: mendeley

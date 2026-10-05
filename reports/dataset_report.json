@@ -1,0 +1,58 @@
+{
+  "total_images": 230,
+  "total_annotations": 1704,
+  "num_classes": 7,
+  "seed": 42,
+  "split_ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15000000000000005
+  },
+  "splits": [
+    {
+      "name": "train",
+      "image_count": 161,
+      "annotation_count": 1194,
+      "class_distribution": {
+        "missing_pad": 193,
+        "mouse_bite": 252,
+        "open_circuit": 191,
+        "short": 177,
+        "spur": 208,
+        "spurious_copper": 173,
+        "missing_hole": 0
+      }
+    },
+    {
+      "name": "val",
+      "image_count": 34,
+      "annotation_count": 243,
+      "class_distribution": {
+        "missing_pad": 39,
+        "mouse_bite": 50,
+        "open_circuit": 38,
+        "short": 36,
+        "spur": 43,
+        "spurious_copper": 37,
+        "missing_hole": 0
+      }
+    },
+    {
+      "name": "test",
+      "image_count": 35,
+      "annotation_count": 267,
+      "class_distribution": {
+        "missing_pad": 44,
+        "mouse_bite": 54,
+        "open_circuit": 47,
+        "short": 41,
+        "spur": 45,
+        "spurious_copper": 36,
+        "missing_hole": 0
+      }
+    }
+  ],
+  "warnings": [],
+  "leakage_check": "passed",
+  "class_coverage_check": "passed"
+}
