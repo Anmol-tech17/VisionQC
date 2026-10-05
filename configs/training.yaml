@@ -1,0 +1,15 @@
+seed: 42
+model: yolov8n.pt
+epochs: 20
+batch_size: 4
+image_size: 320
+patience: 5
+device: cpu
+workers: 0
+confidence_threshold: 0.25
+iou_threshold: 0.45
+output_dir: artifacts/models/pcb_yolov8n
+quality_gate:
+  map50_min: 0.64
+  precision_min: 0.655
+  recall_min: 0.556

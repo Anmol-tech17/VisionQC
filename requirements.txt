@@ -1,0 +1,39 @@
+# VisionQC — Python Dependencies
+# Phase 2 (Real ML Inference)
+# Generated: 2026-09-23
+#
+# Install with:
+#   pip install -r requirements.txt
+#
+# Environment: Python 3.13, CPU-only
+
+# Web framework
+fastapi==0.135.0
+uvicorn[standard]>=0.41.0
+python-multipart>=0.0.32
+
+# Data validation
+pydantic>=2.12.0
+
+# Computer vision
+pillow>=11.3.0
+opencv-python>=5.0.0
+numpy>=2.2.0
+
+# Object detection (includes torchvision)
+ultralytics==8.4.160
+
+# PyTorch — CPU version installed separately
+# On this machine: torch==2.14.0 (installed by ultralytics)
+# For GPU: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# YAML config parsing (bundled with ultralytics, listed for clarity)
+pyyaml>=6.0
+
+# Testing
+pytest>=9.0.0
+httpx>=0.28.0
+
+# Optional: for dataset statistics and reporting
+# matplotlib>=3.11.0  # already installed via jupyter
+# pandas>=3.0.0       # already installed via jupyter

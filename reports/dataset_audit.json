@@ -1,0 +1,180 @@
+{
+  "splits": {
+    "train": {
+      "images": 161,
+      "label_files": 161,
+      "images_missing_label": [],
+      "labels_missing_image": [],
+      "empty_label_files": 0,
+      "invalid_coords": 0,
+      "total_annotations": 1194,
+      "class_distribution": {
+        "missing_pad": 193,
+        "mouse_bite": 252,
+        "open_circuit": 191,
+        "short": 177,
+        "spur": 208,
+        "spurious_copper": 173
+      },
+      "bbox_stats": {
+        "width": {
+          "min": 0.005267,
+          "mean": 0.04024198324958124,
+          "max": 0.44391
+        },
+        "height": {
+          "min": 0.00519,
+          "mean": 0.04013726633165829,
+          "max": 0.392952
+        },
+        "area": {
+          "min": 3.1465058e-05,
+          "mean": 0.001649467217972362,
+          "max": 0.042523736300000003
+        },
+        "small_boxes_pct": 96.48241206030151
+      }
+    },
+    "val": {
+      "images": 34,
+      "label_files": 34,
+      "images_missing_label": [],
+      "labels_missing_image": [],
+      "empty_label_files": 0,
+      "invalid_coords": 0,
+      "total_annotations": 243,
+      "class_distribution": {
+        "missing_pad": 39,
+        "mouse_bite": 50,
+        "open_circuit": 38,
+        "short": 36,
+        "spur": 43,
+        "spurious_copper": 37
+      },
+      "bbox_stats": {
+        "width": {
+          "min": 0.00959,
+          "mean": 0.04207191769547325,
+          "max": 0.268376
+        },
+        "height": {
+          "min": 0.007068,
+          "mean": 0.04193211111111112,
+          "max": 0.400921
+        },
+        "area": {
+          "min": 8.061054e-05,
+          "mean": 0.001801432832983539,
+          "max": 0.033265444359
+        },
+        "small_boxes_pct": 95.47325102880659
+      }
+    },
+    "test": {
+      "images": 35,
+      "label_files": 35,
+      "images_missing_label": [],
+      "labels_missing_image": [],
+      "empty_label_files": 0,
+      "invalid_coords": 0,
+      "total_annotations": 267,
+      "class_distribution": {
+        "missing_pad": 44,
+        "mouse_bite": 54,
+        "open_circuit": 47,
+        "short": 41,
+        "spur": 45,
+        "spurious_copper": 36
+      },
+      "bbox_stats": {
+        "width": {
+          "min": 0.007494,
+          "mean": 0.03984362172284644,
+          "max": 0.489781
+        },
+        "height": {
+          "min": 0.006579,
+          "mean": 0.041237973782771525,
+          "max": 0.403627
+        },
+        "area": {
+          "min": 8.536482000000001e-05,
+          "mean": 0.0018457775553483145,
+          "max": 0.055353284919999995
+        },
+        "small_boxes_pct": 96.25468164794007
+      }
+    }
+  },
+  "sample_image_dimensions": {
+    "widths": [
+      2335,
+      2283,
+      2302,
+      2594,
+      2339,
+      2866,
+      3844,
+      3717,
+      2986,
+      2665,
+      2773,
+      2795,
+      2735,
+      2197,
+      1671,
+      1608,
+      1843,
+      1540,
+      2043,
+      3140,
+      2631,
+      2614,
+      2531,
+      2560,
+      3194,
+      2433,
+      3125,
+      2500,
+      1954,
+      2087
+    ],
+    "heights": [
+      3368,
+      3387,
+      3453,
+      3366,
+      3482,
+      3853,
+      2673,
+      2754,
+      3839,
+      3811,
+      3751,
+      3732,
+      3857,
+      2792,
+      2401,
+      2422,
+      2420,
+      2324,
+      2457,
+      2741,
+      2176,
+      2067,
+      1696,
+      1652,
+      2487,
+      3092,
+      2614,
+      1722,
+      1438,
+      2952
+    ]
+  },
+  "notes": [
+    "No leakage verified by assertion in converter (train/val/test disjoint)",
+    "All 6 defect classes present in train split",
+    "Seed=42 used for reproducible split"
+  ]
+}

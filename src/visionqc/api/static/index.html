@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VisionQC — PCB Defect Inspection</title>
+  <meta name="description" content="VisionQC Phase 2: Real YOLOv8n PCB surface defect detection. Upload a PCB image to run actual ML inference with bounding boxes, class labels, and real confidence scores." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:          #0b0f1a;
+      --surface:     #111827;
+      --surface2:    #1a2235;
+      --border:      #1f2d44;
+      --accent:      #3b82f6;
+      --accent-glow: #3b82f640;
+      --accent2:     #06b6d4;
+      --success:     #10b981;
+      --warn:        #f59e0b;
+      --error:       #ef4444;
+      --text:        #e2e8f0;
+      --text-muted:  #64748b;
+      --text-dim:    #94a3b8;
+      --c0: #ff6464; --c1: #64ff64; --c2: #6464ff;
+      --c3: #ffd700; --c4: #ff64ff; --c5: #32dcff;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px; opacity: 0.3; pointer-events: none; z-index: 0;
+    }
+    .page-wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* Header */
+    header { padding: 36px 0 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); margin-bottom: 32px; flex-wrap: wrap; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 16px; }
+    .brand-icon { width: 48px; height: 48px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 0 24px var(--accent-glow); }
+    .brand-text h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .brand-text p { font-size: 12px; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px; }
+
+    /* Status pills */
+    .status-bar { display: flex; gap: 10px; flex-wrap: wrap; }
+    .status-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); transition: background 0.3s; }
+    .dot.ok  { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .dot.bad { background: var(--error);   box-shadow: 0 0 8px var(--error); }
+    .dot.loading { animation: pulse 1s infinite; background: var(--warn); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* Main grid */
+    .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+
+    /* Card */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; transition: border-color 0.3s; }
+    .card:hover { border-color: #2a3a56; }
+    .card-title { font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .card-title span { font-size: 16px; }
+
+    /* Upload zone */
+    .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; position: relative; background: var(--bg); }
+    .upload-zone.dragging { border-color: var(--accent); background: var(--accent-glow); }
+    .upload-zone.has-file { border-color: var(--success); border-style: solid; }
+    .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-icon { font-size: 40px; margin-bottom: 12px; display: block; transition: transform 0.3s; }
+    .upload-zone:hover .upload-icon { transform: translateY(-4px); }
+    .upload-label { font-size: 15px; font-weight: 500; color: var(--text-dim); }
+    .upload-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .filename-display { margin-top: 14px; padding: 8px 14px; background: var(--surface2); border-radius: 8px; font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--accent2); display: none; word-break: break-all; }
+    .thumb-wrap { margin-top: 16px; display: none; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); max-height: 180px; }
+    .thumb-wrap img { width: 100%; height: 180px; object-fit: cover; display: block; }
+
+    /* Buttons */
+    #inspectBtn { margin-top: 20px; width: 100%; padding: 14px; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif; border: none; border-radius: 10px; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; transition: all 0.25s; }
+    #inspectBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #inspectBtn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 8px 24px #3b82f650; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff4; border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Info badge */
+    .info-badge { margin-top: 16px; padding: 10px 14px; border-radius: 8px; background: #1e3a5f33; border: 1px solid #3b82f630; font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+    .info-badge strong { color: var(--accent2); }
+    .model-badge { margin-top: 10px; padding: 8px 14px; border-radius: 8px; background: #06b6d415; border: 1px solid #06b6d440; font-size: 12px; color: var(--accent2); font-family: 'JetBrains Mono', monospace; display: none; }
+
+    /* Error */
+    .error-msg { margin-top: 14px; padding: 12px 16px; background: #3b000033; border: 1px solid var(--error); border-radius: 8px; font-size: 13px; color: #fca5a5; display: none; }
+
+    /* System status stats */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+    .stat-value { font-size: 22px; font-weight: 700; color: var(--accent2); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+    /* Legend */
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-dim); }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+    /* Results */
+    #resultsPanel { display: none; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .full-card { grid-column: 1 / -1; }
+
+    /* Annotated image */
+    .result-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 768px) { .result-grid { grid-template-columns: 1fr; } }
+    .annotated-wrap { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: #000; position: relative; }
+    .annotated-wrap img { width: 100%; display: block; max-height: 420px; object-fit: contain; }
+    .defect-count-badge { position: absolute; top: 12px; right: 12px; background: #000a; backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 600; }
+    .defect-count-badge .num { font-size: 22px; font-weight: 700; color: var(--accent); display: block; line-height: 1.1; }
+    .prediction-label { position: absolute; top: 12px; left: 12px; background: #000a; backdrop-filter: blur(6px); border: 1px solid #3b82f640; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+
+    /* Detection table */
+    .detection-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .detection-table th { text-align: left; padding: 8px 14px; font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+    .detection-table td { padding: 9px 14px; border-bottom: 1px solid #1a2235; }
+    .detection-table tr:last-child td { border-bottom: none; }
+    .detection-table tr:hover td { background: var(--surface2); }
+
+    .class-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid; }
+    .class-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .conf-bar-wrap { width: 120px; }
+    .conf-bar { height: 4px; border-radius: 2px; background: var(--surface2); overflow: hidden; margin-top: 4px; }
+    .conf-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+
+    /* no-results */
+    .no-results { text-align: center; padding: 32px; color: var(--text-muted); }
+    .no-results .big-icon { font-size: 40px; display: block; margin-bottom: 10px; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🔬</div>
+      <div class="brand-text">
+        <h1>VisionQC</h1>
+        <p>Automated PCB Defect Inspection — Phase 2 · Real ML Inference</p>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-pill" id="pillApi"><div class="dot loading" id="dotApi"></div><span id="labelApi">API …</span></div>
+      <div class="status-pill" id="pillModel"><div class="dot loading" id="dotModel"></div><span id="labelModel">Model …</span></div>
+      <div class="status-pill" id="pillDataset"><div class="dot loading" id="dotDataset"></div><span id="labelDataset">Dataset …</span></div>
+    </div>
+  </header>
+
+  <!-- Main grid -->
+  <div class="main-grid">
+
+    <!-- Upload card -->
+    <div class="card">
+      <div class="card-title"><span>📤</span> Upload PCB Image</div>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/jpeg,image/png" aria-label="Upload PCB image" />
+        <span class="upload-icon">🖼️</span>
+        <div class="upload-label">Drop image here or click to browse</div>
+        <div class="upload-hint">JPEG or PNG · Any PCB image</div>
+      </div>
+      <div class="filename-display" id="filenameDisplay"></div>
+      <div class="thumb-wrap" id="thumbWrap"><img id="thumbImg" alt="Preview" /></div>
+      <button id="inspectBtn" disabled>Inspect PCB</button>
+      <div class="error-msg" id="errorMsg"></div>
+      <div class="model-badge" id="modelBadge"></div>
+      <div class="info-badge">
+        <strong>Real ML Inference:</strong> Detections come from a trained YOLOv8n model.
+        Confidence scores are actual model outputs (not ground-truth labels).
+        The model was fine-tuned on the PCB defect dataset using transfer learning from COCO pretrained weights.
+      </div>
+    </div>
+
+    <!-- System status card -->
+    <div class="card">
+      <div class="card-title"><span>📊</span> System Status</div>
+      <div class="stat-grid">
+        <div class="stat-item"><div class="stat-label">Dataset Images</div><div class="stat-value" id="statImages">—</div></div>
+        <div class="stat-item"><div class="stat-label">Annotations</div><div class="stat-value" id="statAnnotations">—</div></div>
+        <div class="stat-item"><div class="stat-label">Defect Classes</div><div class="stat-value" id="statClasses">—</div></div>
+        <div class="stat-item"><div class="stat-label">Conf. Threshold</div><div class="stat-value" id="statConf">—</div></div>
+      </div>
+      <div class="card-title" style="margin-top:24px;"><span>🎨</span> Defect Classes</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c0)"></div>missing_pad</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c1)"></div>mouse_bite</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c2)"></div>open_circuit</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c3)"></div>short</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c4)"></div>spur</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--c5)"></div>spurious_copper</div>
+      </div>
+    </div>
+
+    <!-- Results card -->
+    <div class="card full-card" id="resultsPanel">
+      <div class="card-title"><span>🔍</span> Inspection Results — <span id="resultModelLabel" style="color:var(--accent2);font-size:12px;margin-left:4px;">Model Prediction</span></div>
+      <div class="result-grid">
+        <div class="annotated-wrap">
+          <div class="prediction-label" id="predLabel">Model Prediction</div>
+          <img id="annotatedImg" alt="Annotated PCB image" />
+          <div class="defect-count-badge"><span class="num" id="defectCount">0</span>Defects</div>
+        </div>
+        <div>
+          <div id="noResults" class="no-results" style="display:none;">
+            <span class="big-icon">✅</span>
+            No defects detected above confidence threshold.<br>
+            <small style="color:var(--text-muted)">Try a lower threshold or a different image.</small>
+          </div>
+          <table class="detection-table" id="detectionTable" style="display:none;">
+            <thead><tr><th>#</th><th>Defect Class</th><th>Confidence</th></tr></thead>
+            <tbody id="detectionBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-grid -->
+</div><!-- /page-wrap -->
+
+<script>
+/* Class colours (model ID 0-5) */
+const CLASS_COLORS = [
+  { bg:'#ff646420', border:'#ff6464', dot:'#ff6464' }, // 0 missing_pad
+  { bg:'#64ff6420', border:'#64ff64', dot:'#64ff64' }, // 1 mouse_bite
+  { bg:'#6464ff20', border:'#6464ff', dot:'#6464ff' }, // 2 open_circuit
+  { bg:'#ffd70020', border:'#ffd700', dot:'#ffd700' }, // 3 short
+  { bg:'#ff64ff20', border:'#ff64ff', dot:'#ff64ff' }, // 4 spur
+  { bg:'#32dcff20', border:'#32dcff', dot:'#32dcff' }, // 5 spurious_copper
+];
+const CLASS_NAMES = ['missing_pad','mouse_bite','open_circuit','short','spur','spurious_copper'];
+
+function classColour(classId) {
+  return CLASS_COLORS[classId] || { bg:'#ffffff10', border:'#aaa', dot:'#aaa' };
+}
+
+/* Health + validation */
+async function loadHealth() {
+  try {
+    const data = await fetch('/health').then(r => r.json());
+    setDot('Api',     true,              'API');
+    setDot('Model',   data.model_loaded, data.model_loaded ? 'Model' : 'No model');
+    const conf = data.confidence_threshold != null ? data.confidence_threshold.toFixed(2) : '—';
+    document.getElementById('statConf').textContent = conf;
+    // Show model badge
+    if (data.model_name) {
+      const badge = document.getElementById('modelBadge');
+      badge.textContent = 'Model: ' + data.model_name + ' · conf≥' + conf;
+      badge.style.display = 'block';
+    }
+  } catch { setDot('Api', false, 'API'); setDot('Model', false, 'Model'); }
+}
+
+async function loadValidation() {
+  try {
+    const data = await fetch('/validate').then(r => r.json());
+    setDot('Dataset', data.passed, 'Dataset');
+    document.getElementById('statImages').textContent      = data.image_count ?? '—';
+    document.getElementById('statAnnotations').textContent = data.annotation_count ?? '—';
+    document.getElementById('statClasses').textContent     = data.defect_class_count ?? '—';
+  } catch { setDot('Dataset', false, 'Dataset'); }
+}
+
+function setDot(id, ok, label) {
+  document.getElementById('dot' + id).className = 'dot ' + (ok ? 'ok' : 'bad');
+  document.getElementById('label' + id).textContent = label + (ok ? ' ✓' : ' ✗');
+}
+
+/* File handling */
+const fileInput       = document.getElementById('fileInput');
+const uploadZone      = document.getElementById('uploadZone');
+const filenameDisplay = document.getElementById('filenameDisplay');
+const thumbWrap       = document.getElementById('thumbWrap');
+const thumbImg        = document.getElementById('thumbImg');
+const inspectBtn      = document.getElementById('inspectBtn');
+const errorMsg        = document.getElementById('errorMsg');
+let selectedFile = null;
+
+fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragging'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragging'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('dragging');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  selectedFile = file;
+  uploadZone.classList.add('has-file');
+  filenameDisplay.textContent = file.name;
+  filenameDisplay.style.display = 'block';
+  inspectBtn.disabled = false;
+  hideError();
+  const reader = new FileReader();
+  reader.onload = e => { thumbImg.src = e.target.result; thumbWrap.style.display = 'block'; };
+  reader.readAsDataURL(file);
+}
+
+/* Inspect */
+inspectBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  hideError(); setLoading(true);
+  try {
+    const form = new FormData();
+    form.append('file', selectedFile);
+    const res  = await fetch('/predict', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) { showError(data.detail || 'Inspection failed.'); return; }
+    renderResults(data);
+  } catch { showError('Could not reach the VisionQC API. Is the server running?'); }
+  finally { setLoading(false); }
+});
+
+function setLoading(on) {
+  inspectBtn.disabled = on;
+  inspectBtn.innerHTML = on
+    ? '<span class="spinner"></span>Running YOLOv8n inference…'
+    : 'Inspect PCB';
+}
+
+/* Render results */
+function renderResults(data) {
+  const panel = document.getElementById('resultsPanel');
+  panel.style.display = 'block';
+  if (data.annotated_image) {
+    document.getElementById('annotatedImg').src = 'data:image/jpeg;base64,' + data.annotated_image;
+  }
+  document.getElementById('defectCount').textContent = data.count ?? 0;
+
+  // Prediction label
+  const predType = data.prediction_type === 'yolo_model' ? 'Model Prediction' : 'Ground Truth';
+  document.getElementById('predLabel').textContent = predType;
+  document.getElementById('resultModelLabel').textContent = predType;
+
+  const tbody = document.getElementById('detectionBody');
+  const table = document.getElementById('detectionTable');
+  const noRes = document.getElementById('noResults');
+  tbody.innerHTML = '';
+
+  if (!data.detections || data.detections.length === 0) {
+    table.style.display = 'none'; noRes.style.display = 'block'; return;
+  }
+  noRes.style.display = 'none'; table.style.display = 'table';
+
+  data.detections.forEach((det, i) => {
+    const col  = classColour(det.class_id);
+    const pct  = Math.round(det.confidence * 100);
+    const tr   = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--text-muted)">${i + 1}</td>
+      <td><span class="class-chip" style="background:${col.bg};border-color:${col.border};color:${col.border}">
+        <span class="class-dot" style="background:${col.dot}"></span>${det.class_name}
+      </span></td>
+      <td>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:13px">${det.confidence.toFixed(3)}</span>
+        <div class="conf-bar-wrap"><div class="conf-bar"><div class="conf-fill" style="width:${pct}%"></div></div></div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showError(msg) { errorMsg.textContent = msg; errorMsg.style.display = 'block'; }
+function hideError() { errorMsg.style.display = 'none'; }
+
+loadHealth();
+loadValidation();
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "training_config": {
+    "model": "yolov8n.pt",
+    "epochs_requested": 40,
+    "epochs_completed": 40,
+    "batch_size": 4,
+    "image_size": 640,
+    "patience": 10,
+    "device": "cpu",
+    "workers": 0,
+    "seed": 42,
+    "dataset_yaml": "C:\\Users\\dell\\OneDrive\\Desktop\\MLOPS CP\\VisionQC\\data\\prepared\\dataset.yaml"
+  },
+  "duration_seconds": 5195.4,
+  "duration_minutes": 86.59,
+  "best_model_path": "C:\\Users\\dell\\OneDrive\\Desktop\\MLOPS CP\\VisionQC\\artifacts\\models\\pcb_yolov8n\\weights\\best.pt",
+  "validation_metrics_at_best_epoch": {
+    "metrics/precision(B)": 0.7455826767924375,
+    "metrics/recall(B)": 0.7003617198480514,
+    "metrics/mAP50(B)": 0.7399664937821823,
+    "metrics/mAP50-95(B)": 0.369785656678484
+  },
+  "note": "Metrics are from ultralytics validation on the val split at the best epoch. Run scripts/evaluate.py for test-split metrics."
+}

@@ -1,0 +1,76 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== VisionQC project-specific =====
+
+# Raw dataset (too large for Git, versioned with DVC later)
+data/raw/
+
+# Prepared YOLO dataset (generated — regenerate with scripts/prepare_dataset.py)
+data/prepared/
+
+# Model weights and training artifacts (large binaries — use DVC later)
+artifacts/
+*.pt
+*.pth
+*.onnx
+*.pkl
+models/*.pt
+models/*.pth
+
+# Ultralytics training cache and output
+runs/
+yolov8n.pt
+
+# MLflow / DVC (future phases)
+mlruns/
+.dvc/
+
+# Secrets / environment files
+.env
+*.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Compressed archives
+*.zip
+*.tar.gz
+
+# reports/ IS committed (contains .md and .json result files from real runs)
+# data/prepared/ is NOT committed (always regenerated)
+# artifacts/ is NOT committed (too large; use DVC or model registry)

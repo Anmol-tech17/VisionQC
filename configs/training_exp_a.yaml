@@ -1,0 +1,56 @@
+# VisionQC — Experiment A Training Configuration
+# ------------------------------------------------
+# Hypothesis: 96.3% of defects are <5% of image width/height.
+# At 320px the median defect is only 9x9px — far too small for reliable detection.
+# At 640px it becomes 19x19px, matching YOLO's small-object detection capability.
+#
+# Key changes from baseline (320px, 20 epochs):
+#   image_size: 640  (median defect 9px -> 19px)
+#   epochs: 40       (more learning cycles for small objects)
+#   patience: 10     (allow plateaus before early stopping)
+#   mosaic: 0.0      (mosaic crops destroy tiny PCB defect context)
+#   degrees: 0.0     (PCB orientation matters; no rotation)
+#   shear: 0.0       (no shear for PCB images)
+#   perspective: 0.0 (no perspective warp)
+#   flipud: 0.0      (PCB boards aren't flipped vertically)
+#   fliplr: 0.5      (horizontal flip is harmless)
+#   scale: 0.3       (mild scale augmentation)
+#   translate: 0.1   (mild translation)
+#   hsv_h: 0.0       (PCB colour is meaningful; minimal hue shift)
+#   hsv_s: 0.3       (mild saturation variation)
+#   hsv_v: 0.3       (mild brightness variation)
+#   mixup: 0.0       (avoid mixing images from different boards)
+#   copy_paste: 0.0  (off)
+
+seed: 42
+model: yolov8n.pt
+epochs: 40
+batch_size: 4
+image_size: 640
+patience: 10
+device: cpu
+workers: 0
+output_dir: artifacts/models/pcb_yolov8n_640
+
+# Augmentation — conservative for PCB domain
+mosaic: 0.0
+degrees: 0.0
+shear: 0.0
+perspective: 0.0
+flipud: 0.0
+fliplr: 0.5
+scale: 0.3
+translate: 0.1
+hsv_h: 0.0
+hsv_s: 0.3
+hsv_v: 0.3
+mixup: 0.0
+copy_paste: 0.0
+
+confidence_threshold: 0.25
+iou_threshold: 0.45
+
+quality_gate:
+  map50_min: null
+  precision_min: null
+  recall_min: null
