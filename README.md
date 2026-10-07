@@ -1,8 +1,8 @@
 # VisionQC — Automated PCB Defect Inspection
 
-**MLOps Course Project — Phase 4B: FastAPI MLflow Inference Service**
+**MLOps Course Project — Current Status: Phase 4B (FastAPI MLflow Inference Service)**
 
-An end-to-end machine learning system for automated detection of PCB (Printed Circuit Board) surface defects using real YOLOv8s object detection inference, tracked via MLflow and served via FastAPI.
+An end-to-end machine learning system for automated detection of PCB (Printed Circuit Board) surface defects. The project features a YOLOv8s object detection model trained on real-world defects, tracked via MLflow, and served dynamically through a FastAPI REST API.
 
 ---
 
@@ -18,8 +18,6 @@ VisionQC detects six categories of PCB manufacturing defects:
 | 3 | `short` | Unintended connection between traces |
 | 4 | `spur` | Unwanted metal protrusion |
 | 5 | `spurious_copper` | Copper appearing where it should not |
-
-The system provides a FastAPI REST API for real-time defect inspection, with model management handled by MLflow.
 
 ---
 
@@ -38,7 +36,7 @@ VisionQC/
 │   ├── data/                    # Dataset processing
 │   └── inference/               # Inference utilities
 ├── tests/                       # Unit and API tests
-├── docs/                        # Project documentation & DEMO_GUIDE
+├── docs/                        # Project documentation (Cards, Reports, Demo Guide)
 ├── mlruns/                      # MLflow experiment tracking output
 ├── mlflow.db                    # MLflow SQLite backend
 ├── requirements.txt
@@ -50,144 +48,68 @@ VisionQC/
 
 ## Dataset
 
-The raw dataset is **not committed to Git** (too large). It consists of 230 annotated PCB images in COCO format.
+*Detailed dataset research and comparisons are available in `docs/DATASET_RESEARCH.md` and `docs/DATA_CARD.md`.*
 
-| Split | Images | Annotations |
-|---|---|---|
-| Train | 161 | 1,194 |
-| Val | 34 | 243 |
-| Test | 35 | 267 |
-| **Total** | **230** | **1,704** |
+**Researched Datasets:**
+1. **PCB-Defect (Rashid 2025):** 230 real-world high-resolution images.
+2. **Mixed PCB Defect Dataset (Mendeley):** 1,386 synthetic augmented images.
 
----
-
-## Environment
-
-```
-Python:     3.13.0
-PyTorch:    2.14.0+cpu
-Ultralytics: 8.4.160
-Hardware:   CPU only
-```
-
-> **Important:** All scripts must be run with Python 3.13.
+**Final Selected Dataset:**
+The **PCB-Defect (Rashid 2025)** dataset was exclusively selected to train the final champion model due to its high authenticity and real-world defect representation, avoiding the biases of synthetic artifacts. The raw dataset is tracked via DVC.
 
 ---
 
-## Quick Start (Phase 4B Demo)
+## Model Experiments & Final Champion
 
-### 1. Install dependencies
-```bash
-pip install -r requirements.txt
-```
+*Detailed model comparisons are available in `docs/MODEL_CARD.md`.*
 
-### 2. View MLflow Dashboard
-```bash
-& "C:\Program Files\Python313\python.exe" -m mlflow ui --backend-store-uri sqlite:///mlflow.db
-```
-Open `http://localhost:5000` to view the trained models, experiments, and the `VisionQC-Detector` in the Model Registry.
+Through iterative experimentation managed by MLflow, several models were trained:
+- **Baseline (YOLOv8n, 320px):** Poor recall due to tiny defect sizes.
+- **Experiment A (YOLOv8n, 640px):** Massive improvement by increasing resolution.
+- **Experiment B (YOLOv8n, 640px, V2 Dataset):** Tested synthetic data volume impact.
 
-### 3. Start the FastAPI Service
-```bash
-& "C:\Program Files\Python313\python.exe" -m uvicorn src.visionqc.api.main:app --reload --host 0.0.0.0 --port 8000
-```
-Open the interactive Swagger UI at: `http://localhost:8000/docs`
+**Best / Final Champion Model:**
+The **YOLOv8s (small)** architecture trained on the Rashid dataset at 640px (Phase 4A) was selected as the final champion.
+- **Test mAP50:** 0.8137
+- **Test mAP50-95:** 0.4294
+- **Precision:** 0.8284 | **Recall:** 0.7863
 
 ---
 
-## Model Performance (Phase 4A)
+## MLOps Pipeline & API (Phase 4B)
 
-The current **Champion** model deployed to the API is **YOLOv8s** (Version 2).
+The project leverages **MLflow** for experiment tracking and model registration. The Champion model is tagged in the MLflow Model Registry as `VisionQC-Detector@champion`.
 
-| Metric | Phase 2 Baseline (YOLOv8n) | Phase 4A Champion (YOLOv8s) |
-|---|---|---|
-| Image Size | 640px | 640px |
-| Epochs | 40 | 40 |
-| mAP@0.5 | 0.7527 | **0.8137** |
-| mAP@0.5:0.95 | 0.3610 | **0.4294** |
-| Precision | - | **0.8284** |
-| Recall | - | **0.7863** |
-| CPU Latency | 164.9 ms | 346.0 ms |
+**FastAPI Service:**
+The inference layer is a REST API that dynamically fetches the champion weights from MLflow on startup.
 
-YOLOv8s was selected as it substantially improved overall detection metrics on the tiny PCB defects.
+**Quick Start Demo:**
+1. Install dependencies: `pip install -r requirements.txt`
+2. View MLflow Dashboard: `python -m mlflow ui --backend-store-uri sqlite:///mlflow.db` (Port 5000)
+3. Start FastAPI Service: `python -m uvicorn src.visionqc.api.main:app --reload` (Port 8000)
+4. Access Swagger UI: `http://localhost:8000/docs`
 
----
-
-## API Reference (FastAPI)
-
-### `GET /health`
-Returns the status of the API and dynamically reports the version of the MLflow champion model currently loaded.
-
-```json
-{
-  "status": "ok",
-  "model_version": 2
-}
-```
-
-### `POST /predict`
-Uploads an image to receive defect predictions.
-
-**Request:** `multipart/form-data`, field `file` containing the image.
-
-**Example using `curl`:**
-```bash
-curl -X POST "http://127.0.0.1:8000/predict" \
-     -H "accept: application/json" \
-     -H "Content-Type: multipart/form-data" \
-     -F "file=@data/prepared/test/images/pcb_defect_test.jpg"
-```
-
-**Response (200 OK):**
-```json
-{
-  "predictions": [
-    {
-      "name": "short",
-      "class": 3,
-      "confidence": 0.895,
-      "box": {
-        "x1": 150.5,
-        "y1": 200.0,
-        "x2": 175.2,
-        "y2": 220.8
-      }
-    }
-  ]
-}
-```
+**API Endpoints:**
+- `GET /health`: Returns service status and dynamically loaded MLflow model version.
+- `POST /predict`: Accepts image uploads and returns a JSON payload of detected bounding boxes and classes.
 
 ---
-
-## MLOps Pipeline Status
-
-```
-Raw COCO dataset
-     ↓
-Dataset Prep & Split (Reproducible, seed=42)
-     ↓
-DVC Versioning & MLflow Tracking (Phase 3)
-     ↓
-Model Training & Experimentation (Phase 4A: YOLOv8s)
-     ↓
-MLflow Model Registry (Champion Alias)
-     ↓
-FastAPI Dynamic Inference Service (Phase 4B)
-```
 
 ## Course MLOps Requirements Status
 
 | Component | Status |
 |---|---|
 | Git + meaningful commits | Implemented ✅ |
-| Fixed seed | seed=42 everywhere ✅ |
-| Baseline model | Phase 2 ✅ |
-| Candidate models | Phase 4A ✅ |
-| MLflow tracking | Phase 3 ✅ |
-| MLflow model registry | Phase 3 ✅ |
-| DVC dataset versioning | Phase 3 ✅ |
-| FastAPI REST API | Phase 4B ✅ |
+| Fixed seed | Implemented (seed=42) ✅ |
+| Baseline model | Implemented (Phase 2) ✅ |
+| Candidate models | Implemented (Phase 4A) ✅ |
+| MLflow tracking & registry | Implemented (Phase 3) ✅ |
+| DVC dataset versioning | Implemented (Phase 3) ✅ |
+| FastAPI REST API (Swagger) | Implemented (Phase 4B) ✅ |
 | Docker | Planned Phase 5A |
 | Airflow orchestration | Planned Phase 5B |
 | Unit + integration tests | Implemented ✅ |
 | Model card & Data card | Implemented ✅ |
+| Detailed Phase Reports | Implemented ✅ |
+
+*Note: Future phases (Docker, Airflow, CI/CD, Monitoring) are planned but not yet implemented.*
