@@ -1,0 +1,136 @@
+# VisionQC — Agent Guidelines
+
+## Project
+
+VisionQC is an **Automated Manufacturing Defect Inspection** MLOps project.
+
+**Goal:** Use computer vision to detect defective products from production images.
+
+## Mandatory Requirements
+
+* Computer vision for defect inspection
+* Image dataset versioning using **DVC**
+* At least **1 baseline + 2 candidate models**
+* Experiment, metric, and artifact tracking using **MLflow**
+* Best model registered in MLflow
+* Automated **Apache Airflow** pipeline covering:
+
+  * Data ingestion
+  * Validation
+  * Preprocessing
+  * Feature engineering
+  * Training
+  * Evaluation
+  * Model registration
+* **FastAPI** REST prediction service
+* Input validation, error handling, and health endpoint
+* **Dockerfile + Docker Compose**
+* **GitHub Actions CI/CD**
+* Unit tests + API integration test + Docker build test
+* Model-quality threshold before promotion
+* **Prometheus + Grafana** monitoring
+* Request, error, latency, prediction, drift, and model-performance monitoring
+* Simulated drift evidence
+* SHAP/LIME explanation
+* Data Card + Model Card + Responsible AI statement
+* AWS extension: S3 + SageMaker + CloudWatch/equivalent
+* Final report including model metric, business metric, p95 latency, throughput, error rate, and drift metric
+
+## Project Structure
+
+We are implementing the project incrementally in the following order:
+
+**Phase 1 → Project Setup & Foundation**
+
+**Phase 2 → Dataset Preparation, DVC & Baseline Model**
+
+**Phase 3 → MLflow Experiment Tracking & Initial MLOps Pipeline**
+
+**Phase 4A → Model Improvement & Model Registry**
+
+* Compare baseline + candidate models
+* Evaluate on held-out test data
+* Register best model
+* Promote champion
+
+**Phase 4B → FastAPI**
+
+* MLflow champion model loading
+* `/health`
+* `/predict`
+* Input validation
+* Error handling
+* API testing
+
+**Phase 5A → Docker**
+
+* Dockerize FastAPI
+* Docker build/run validation
+* Docker Compose where appropriate
+
+**Phase 5B → Airflow**
+
+* Automated pipeline
+* Data ingestion
+* Validation
+* Preprocessing
+* Feature engineering
+* Training
+* Evaluation
+* Model registration/promotion
+
+**Phase 6 → CI/CD & Integration**
+
+* GitHub Actions
+* Automated tests
+* Docker build/test
+* End-to-end integration
+
+**Phase 7 → Monitoring & Explainability**
+
+* Prometheus + Grafana
+* Latency/errors/requests/predictions
+* Drift and model-performance monitoring
+* Simulated drift
+* SHAP/LIME
+
+**Phase 8 → AWS Extension & Finalization**
+
+* S3
+* SageMaker
+* CloudWatch/equivalent
+* Data Card
+* Model Card
+* Responsible AI statement
+* Final report and 5-minute demonstration
+
+### Important
+
+This phase order is intentional.
+
+**Docker is being implemented before Airflow.**
+
+The final architecture is therefore:
+
+**Dataset → DVC → Training/MLflow → Model Registry → FastAPI → Docker → Airflow → CI/CD → Monitoring → AWS Extension**
+
+The coding agent must follow the **current phase boundary** and must not implement later phases prematurely.
+
+## Agent Rules
+
+* Treat this document as mandatory project requirements.
+* Inspect the existing implementation before making changes.
+* Do not redo completed work unnecessarily.
+* Prefer simple, reliable, demonstrable implementations.
+* Keep all components integrated into one coherent system.
+* Test each component before moving to the next phase.
+* Never fabricate metrics, predictions, monitoring data, or test results.
+* Never claim something works unless it has been tested.
+* Avoid unnecessary training and compute.
+* Keep secrets and credentials out of Git.
+* Maintain a professional README and meaningful Git history.
+* Respect approval gates when explicitly requested; do not commit without approval.
+* Before final project completion, verify every mandatory requirement.
+* The project must be demonstrable in approximately **5 minutes**.
+
+**Important:** This is an **MLOps project**, not simply a computer-vision model. A notebook with training and accuracy results alone is insufficient.
