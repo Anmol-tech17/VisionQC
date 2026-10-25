@@ -1,0 +1,75 @@
+# VisionQC .dockerignore
+# Prevents large, unnecessary, or sensitive files from entering the build context.
+
+# Version control
+.git/
+.gitignore
+
+# Python runtime artifacts
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Jupyter / IDE
+.ipynb_checkpoints/
+notebooks/
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# DVC cache and tracked large files (not needed in image)
+.dvc/
+*.dvc
+.dvcignore
+
+# Raw and prepared datasets (large; mounted at runtime if needed)
+data/
+
+# Model weights / training artifacts (loaded from MLflow at runtime)
+artifacts/
+models/
+runs/
+yolov8n.pt
+yolov8s.pt
+*.pt
+*.pth
+*.onnx
+
+# MLflow files (mounted as volumes at runtime)
+mlflow.db
+mlruns/
+
+# Reports and docs (not needed at runtime)
+reports/
+docs/
+
+# OS / temp
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# DAGs (Airflow only — not needed by FastAPI image)
+dags/
+
+# Monitoring
+monitoring/
+
+# Top-level scripts (training/evaluation — not part of inference API)
+scripts/
+
+# Tests
+tests/

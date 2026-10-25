@@ -1,0 +1,43 @@
+# VisionQC — Docker Compose (Phase 5A)
+# Runs the FastAPI inference service using the Ubuntu-D Docker Engine.
+#
+# Usage:
+#   docker compose up -d          # start in background
+#   docker compose logs -f api    # stream logs
+#   docker compose down           # stop and remove containers
+#
+# The MLflow database and artifact store are bind-mounted from the project
+# directory so the container can resolve VisionQC-Detector@champion.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: visionqc-api:latest
+    container_name: visionqc-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # MLflow backend — resolves to the bind-mounted file inside the container
+      MLFLOW_TRACKING_URI: "sqlite:///mlflow.db"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      # MLflow database and artifact store (read-write for SQLite WAL and MLflow model metadata)
+      # When running from WSL, this path becomes /mnt/c/Users/dell/...
+      # Use VISIONQC_PROJECT_DIR to override e.g.: export VISIONQC_PROJECT_DIR=/mnt/c/Users/...
+      - ${VISIONQC_PROJECT_DIR:-/mnt/c/Users/dell/OneDrive/Desktop/MLOPS CP/VisionQC}/mlflow.db:/app/mlflow.db
+      - ${VISIONQC_PROJECT_DIR:-/mnt/c/Users/dell/OneDrive/Desktop/MLOPS CP/VisionQC}/mlruns:/app/mlruns
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    # Resource limits appropriate for i3-8130U (2 cores, ~4 GB usable in WSL)
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: "2g"
