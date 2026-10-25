@@ -1,0 +1,67 @@
+# VisionQC — Docker Compose (Phase 5B: Airflow)
+# Separate compose file for Apache Airflow orchestration.
+# Run independently of docker-compose.yml (inference API).
+#
+# Usage:
+#   docker compose -f docker-compose.airflow.yml up -d       # start Airflow
+#   docker compose -f docker-compose.airflow.yml logs -f     # stream logs
+#   docker compose -f docker-compose.airflow.yml down         # stop
+#
+# Access Airflow UI: http://localhost:8080  (user: admin / pass: admin)
+#
+# The VisionQC project directory is bind-mounted into the container at /visionqc.
+# Set VISIONQC_PROJECT_DIR if your project is not at the default path.
+#
+# Storage:
+#   - Airflow metadata DB (SQLite):  D:/visionqc-airflow/airflow.db
+#   - Airflow logs:                  D:/visionqc-airflow/logs/
+#   - DAGs:                          read from project dags/ directory
+
+services:
+  airflow:
+    image: apache/airflow:2.10.3-python3.12
+    container_name: visionqc-airflow
+    restart: unless-stopped
+    user: "50000:0"
+    ports:
+      - "8080:8080"
+    environment:
+      # Use lightweight SequentialExecutor — required by Airflow when using SQLite
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      # SQLite metadata database stored on D: via bind-mount
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "sqlite:////airflow-data/airflow.db"
+      # Disable example DAGs
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      # Point to the bind-mounted dags folder
+      AIRFLOW__CORE__DAGS_FOLDER: /visionqc/dags
+      # Parallelism limits for resource-constrained laptop
+      AIRFLOW__CORE__PARALLELISM: "2"
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "1"
+      AIRFLOW__CORE__DAG_CONCURRENCY: "1"
+      # Logging
+      AIRFLOW__CORE__LOGGING_LEVEL: INFO
+      AIRFLOW__LOGGING__BASE_LOG_FOLDER: /airflow-logs
+      # Webserver tuning for 2-thread CPU laptop: 1 worker instead of 4
+      AIRFLOW__WEBSERVER__WORKERS: "1"
+      AIRFLOW__WEBSERVER__WEB_SERVER_MASTER_TIMEOUT: "300"
+      AIRFLOW__WEBSERVER__WORKER_REFRESH_BATCH_SIZE: "0"
+      # VisionQC runtime environment for the DAG
+      VISIONQC_PROJECT_DIR: /visionqc
+      VISIONQC_SMOKE_TEST: "true"
+      VISIONQC_TRAIN_CONFIG: configs/training_exp_1.yaml
+      VISIONQC_EVAL_NAME: airflow_candidate
+      MLFLOW_TRACKING_URI: "sqlite:////visionqc/mlflow.db"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      # VisionQC project (read-write so reports/ and mlflow.db can be updated)
+      - ${VISIONQC_PROJECT_DIR:-/mnt/c/Users/dell/OneDrive/Desktop/MLOPS CP/VisionQC}:/visionqc
+      # Airflow metadata and logs stored on D:
+      - /mnt/d/visionqc-airflow/data:/airflow-data
+      - /mnt/d/visionqc-airflow/logs:/airflow-logs
+    command: airflow standalone
+    # Resource limits for 2-thread i3-8130U
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: "2g"
