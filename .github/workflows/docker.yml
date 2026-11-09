@@ -1,0 +1,59 @@
+# VisionQC — Docker Build & Publish
+# Builds the Docker image on every push to main and on manual dispatch.
+# Optionally pushes to GitHub Container Registry (GHCR) when credentials are available.
+
+name: Docker Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write          # required for GHCR push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: |
+            ghcr.io/anmol-tech17/visionqc:${{ github.sha }}
+            ghcr.io/anmol-tech17/visionqc:latest
+
+      - name: Inspect built image
+        run: |
+          docker images ghcr.io/anmol-tech17/visionqc
+          echo "✅ Docker image built successfully."
+
+      # ── Optional: push to GHCR ──────────────────────────────────────────
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true          # won't fail the build if permissions aren't configured
+
+      - name: Push image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push ghcr.io/anmol-tech17/visionqc:${{ github.sha }} || echo "⚠️  Push skipped (GHCR credentials may not be configured)."
+          docker push ghcr.io/anmol-tech17/visionqc:latest            || echo "⚠️  Push skipped."
+        continue-on-error: true
