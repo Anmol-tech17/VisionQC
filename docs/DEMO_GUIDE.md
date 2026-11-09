@@ -1,209 +1,186 @@
-# VisionQC — Demo Guide (Up to Phase 4B)
-
-This guide is designed to help you confidently present the VisionQC project to your teacher. It covers the current implementation state up to **Phase 4B** (FastAPI MLflow Inference Service).
-
----
-
-## 1. Demo Objective
-
-**What this demo proves:** 
-This demo proves that we have successfully built an end-to-end MLOps pipeline for PCB defect detection. It demonstrates that we can take raw data, track experiments and models using MLflow, select a "champion" model (YOLOv8s), and serve that model dynamically through a FastAPI REST API for real-time inference.
-
-*(Note: Do not claim Docker or Airflow are implemented yet, as those are future phases.)*
+# VisionQC — Practical Demonstration Guide
+**Project:** VisionQC: Automated Manufacturing Defect Inspection  
+**Target Environment:** Windows 10/11 + WSL2 (`Ubuntu-D`, Docker on D: drive, CPU-only)  
+**Authoritative Location:** `docs/DEMO_GUIDE.md`  
 
 ---
 
-## 2. Demo Preparation Checklist
+## 1. Pre-Demo Checklist
 
-### **Must Prepare (Before the teacher arrives)**
-- [ ] **Open VS Code** to the `VisionQC` folder.
-- [ ] **Open 2 separate terminal windows** in VS Code (Terminal 1 for MLflow, Terminal 2 for FastAPI).
-- [ ] **Ensure Python 3.13 virtual environment is active** in both terminals (or you are using the explicit Python 3.13 path: `& "C:\Program Files\Python313\python.exe"`).
-- [ ] **Prepare Test Image:** Open file explorer to `data/prepared/test/images/` and locate `pcb_defect_007.jpg` so it's ready to upload.
-- [ ] **Browser Ready:** Open a browser window with two tabs ready (but don't load the URLs yet).
+Complete these checks 5–10 minutes before the demonstration:
 
-### **Optional Backup**
-- [ ] Have a screenshot of the MLflow dashboard saved just in case the UI fails to load.
-- [ ] Have the `reports/evaluation_results_exp_a.json` file open in a VS Code tab as backup evidence of model performance.
-
----
-
-## 3. Exact Demo Sequence
-
-### **Step 1: Introduction & Architecture**
-- **What I do:** Open `README.md` and show the "Repository Structure".
-- **What I should see:** The project folders.
-- **What I say:** "Sir/Ma'am, this is VisionQC. It detects 6 types of PCB defects using a YOLO model. We structured this as an MLOps project, meaning we track our data, model experiments, and serve the best model via an API."
-- **Why it matters:** Establishes that this is an engineering project, not just a Jupyter notebook.
-
-### **Step 2: MLflow Dashboard**
-- **What I do:** In Terminal 1, run `& "C:\Program Files\Python313\python.exe" -m mlflow ui --backend-store-uri sqlite:///mlflow.db`. Open `http://localhost:5000` in the browser.
-- **What I should see:** The MLflow UI showing experiments and the Model Registry.
-- **What I say:** "We use MLflow to track all our training runs. As you can see here, we trained a baseline model and a Candidate (YOLOv8s). Because YOLOv8s achieved a higher mAP50 of 0.81, we registered it here in the Model Registry and tagged it as the 'champion'."
-- **Why it matters:** Proves you implemented experiment tracking and model versioning.
-
-### **Step 3: FastAPI Startup**
-- **What I do:** In Terminal 2, run `& "C:\Program Files\Python313\python.exe" -m uvicorn src.visionqc.api.main:app --reload`.
-- **What I should see:** Terminal logs showing Uvicorn starting and the model loading from MLflow.
-- **What I say:** "Now I'll start our inference API. When it boots up, it automatically connects to MLflow, asks for the 'champion' model, and loads it into memory. We don't hardcode the model path."
-- **Why it matters:** Demonstrates dynamic model loading (a key MLOps concept).
-
-### **Step 4: Swagger UI & Health Check**
-- **What I do:** Open `http://localhost:8000/docs` in the browser. Click `GET /health`, click "Try it out", then "Execute".
-- **What I should see:** A 200 OK response with `{"status": "ok", "model_version": 2}`.
-- **What I say:** "This is the Swagger UI. Our health endpoint confirms the API is live and correctly loaded Version 2, which is our champion."
-- **Why it matters:** Shows API readiness and Swagger documentation.
-
-### **Step 5: Live Prediction**
-- **What I do:** Click `POST /predict`. Click "Try it out". Upload `data/prepared/test/images/pcb_defect_007.jpg`. Click "Execute".
-- **What I should see:** A 200 OK response with a JSON payload of predictions (bounding boxes, classes).
-- **What I say:** "Here I'm sending a real PCB image to the API. The API processes the image, runs the YOLOv8s model inference, and returns the defect predictions in JSON format."
-- **Why it matters:** Proves the end-to-end pipeline actually works.
+- [ ] **Repository Directory:** Ensure you are in `C:\Users\dell\OneDrive\Desktop\MLOPS CP\VisionQC`.
+- [ ] **Python Interpreter:** Confirm Python 3.13 is available (`& "C:\Program Files\Python313\python.exe" --version`).
+- [ ] **Git Synchronization:** Confirm working tree is clean and synchronized (`git status`).
+- [ ] **Champion Model Weights:** Confirm `artifacts/models/pcb_yolov8n/weights/best.pt` exists (~21.5 MB).
+- [ ] **MLflow Database:** Confirm `mlflow.db` exists at project root.
+- [ ] **Sample Images Ready:** Locate test images in File Explorer at `data/prepared/test/images/` (specifically `pcb_defect_007.jpg`).
+- [ ] **Docker Engine in WSL:** Confirm Ubuntu-D Docker daemon is running:
+  ```powershell
+  wsl.exe -d Ubuntu-D -u root -e docker ps
+  ```
+  *(If WSL was sleeping, this command awakens it).*
+- [ ] **Browser Prepared:** Open your browser with clean tabs ready for the demonstration URLs.
 
 ---
 
-## 4. Recommended Demo Order
+## 2. Exact Startup Commands
 
-1. **Briefly introduce the problem** (PCB defect detection).
-2. **Show project architecture** (VS Code file tree).
-3. **Show model evaluation results** (Briefly mention mAP50 improvement from Phase 4A).
-4. **Show MLflow** (Experiments and Model Registry Champion).
-5. **Start FastAPI** (Show terminal logs loading the model).
-6. **Open Swagger** (API documentation).
-7. **Perform a real prediction request** (`/predict` endpoint).
-8. **Show prediction response** (JSON output).
-9. **Summarize** (How the components connect seamlessly).
+VisionQC supports two demonstration modes. **Option A (Python Native)** is fastest for immediate GUI and inference testing. **Option B (Docker Stack)** demonstrates full containerized MLOps architecture.
 
----
+### Option A: Fast Local Demonstration (Windows PowerShell)
 
-## 5. MLflow Demo Details
+Run these commands in Windows PowerShell:
 
-- **Start Command:** `& "C:\Program Files\Python313\python.exe" -m mlflow ui --backend-store-uri sqlite:///mlflow.db`
-- **Port:** `http://localhost:5000`
-- **What to show:** Click on "Models" at the top to show the `VisionQC-Detector` and point out the `champion` alias on Version 2.
-- **What is MLflow doing?** "MLflow acts as our central source of truth for experiments. It logs our training parameters (like epochs, image size) and metrics (mAP, precision). More importantly, it acts as a Model Registry."
-- **Why use MLflow?** "Instead of manually copying `.pt` files around and losing track of which model is in production, MLflow lets us programmatically tag the best model as 'champion' so our API can fetch it automatically."
+```powershell
+# 1. Open project directory
+Set-Location "C:\Users\dell\OneDrive\Desktop\MLOPS CP\VisionQC"
+
+# 2. Launch FastAPI Inference Server & Web GUI
+& "C:\Program Files\Python313\python.exe" main.py
+```
+*The server will boot, automatically load the Champion model from `mlflow.db`, and serve the GUI at `http://localhost:8000`.*
 
 ---
 
-## 6. FastAPI Demo Details
+### Option B: Full Containerized Stack (Ubuntu-D WSL)
 
-- **Start Command:** `& "C:\Program Files\Python313\python.exe" -m uvicorn src.visionqc.api.main:app --reload`
-- **Port:** `http://localhost:8000`
-- **How model is loaded:** Explain that in `src/visionqc/api/main.py`, the `lifespan` function queries MLflow for `models:/VisionQC-Detector@champion`, downloads the weights dynamically, and loads them into memory exactly once on startup.
-- **Processing:** The API receives a file upload, converts it to an RGB Image, passes it to the Ultralytics YOLO model, and parses the raw output into a clean JSON response.
-
----
-
-## 7. Swagger Demo Details
-
-- **URL:** `http://localhost:8000/docs`
-- **What is Swagger?** "Swagger is an interactive documentation page automatically generated by FastAPI. It allows developers to test the API endpoints directly from the browser without needing to write custom code or use tools like Postman."
-- **Execution:** Expand the `/predict` endpoint, click "Try it out", use the file picker to choose an image from `data/prepared/test/images/`, and click "Execute". Explain that the JSON response contains the coordinates (`box`) and the defect type (`class`).
-
----
-
-## 8. End-to-End Architecture Explanation
-
-"Conceptually, our pipeline works like this:
-First, our **training pipeline** takes the YOLO dataset and trains a model, logging all metrics and the final weights to **MLflow**. We evaluate the model and tag the best one as 'champion' in the registry.
-Second, our **inference pipeline** starts with **FastAPI**. On startup, FastAPI asks MLflow for the champion weights and loads them into memory. When a client sends an image via the `/predict` endpoint, FastAPI feeds it to the model, gets the bounding boxes, and returns them as a JSON response."
-
----
-
-## 9. Files I Should Show
-
-| File | Why I should show it |
-| ---- | -------------------- |
-| `src/visionqc/api/main.py` | Shows the FastAPI code, specifically the `lifespan` function fetching the MLflow champion. |
-| `configs/training_exp_a.yaml` | Shows how we configure our YOLO training runs cleanly. |
-| `README.md` | Proves we have excellent project documentation and an organized MLOps status tracker. |
-| `mlflow.db` (in the file tree) | Shows that we are using a local SQLite backend for MLflow tracking. |
-
----
-
-## 10. What NOT to Show
-
-- ❌ **Do NOT run a training script live.** It will take too long and freeze your CPU.
-- ❌ **Do NOT show the raw COCO JSON file.** It's huge and will lag VS Code.
-- ❌ **Do NOT talk about Docker or Airflow.** If asked, state "That is scheduled for Phase 5, the current phase finalized the API and Model Registry."
-
----
-
-## 11. Demo Backup Plan
-
-- **If MLflow UI doesn't start:** Open `reports/evaluation_results_exp_a.json` to prove you evaluated the model.
-- **If FastAPI fails to start (Port in use):** Run it on a different port: `& "C:\Program Files\Python313\python.exe" -m uvicorn src.visionqc.api.main:app --port 8080`.
-- **If prediction fails during live demo:** Show the `tests/test_api.py` file and run `& "C:\Program Files\Python313\python.exe" -m pytest tests/` to prove it works in automated testing.
-- **If internet is down:** Everything is 100% local (SQLite, local models). You do not need internet for this demo.
-
----
-
-## 12. Exact Commands Cheat Sheet
+Open a WSL terminal (or run via PowerShell using `wsl.exe`):
 
 ```bash
-# 1. Start MLflow (Terminal 1)
-& "C:\Program Files\Python313\python.exe" -m mlflow ui --backend-store-uri sqlite:///mlflow.db
+# In Ubuntu-D WSL:
+cd "/mnt/c/Users/dell/OneDrive/Desktop/MLOPS CP/VisionQC"
 
-# 2. Start FastAPI (Terminal 2)
-& "C:\Program Files\Python313\python.exe" -m uvicorn src.visionqc.api.main:app --reload
+# 1. Ensure shared bridge network exists
+docker network create visionqc-net 2>/dev/null || true
 
-# 3. Test API via automated tests (Optional / Backup)
-& "C:\Program Files\Python313\python.exe" -m pytest tests/ -v
+# 2. Start Inference API container (Port 8000)
+docker compose up -d
+
+# 3. Start Prometheus (Port 9090) and Grafana (Port 3000)
+docker compose -f docker-compose.monitoring.yml up -d
+
+# 4. (Optional) Start Airflow pipeline orchestrator (Port 8080)
+docker compose -f docker-compose.airflow.yml up -d
 ```
 
 ---
 
-## 13. 5-Minute Demo Version
+## 3. Verified Demonstration URLs
 
-1. Show `src/visionqc/api/main.py` (Point out MLflow model fetching).
-2. Start FastAPI.
-3. Open Swagger (`localhost:8000/docs`).
-4. Upload `pcb_defect_007.jpg` to `/predict`.
-5. Show the JSON response.
-6. **Say:** "We trained YOLOv8s, tracked it in MLflow, and served it via FastAPI. The API dynamically loads the champion model on startup."
-
----
-
-## 14. 10–15 Minute Demo Version
-
-Follow the **Exact Demo Sequence (Section 3)** in full. Take the time to show the MLflow UI in the browser, explain the difference between Phase 2 baseline and Phase 4A candidate, and walk through the Swagger UI slowly.
+| Service / Interface | Local URL | Default Credentials | Purpose |
+|---|---|---|---|
+| **Industrial Web GUI** | `http://localhost:8000` | *None* | Primary user interface for PCB inspection. |
+| **FastAPI Swagger Docs** | `http://localhost:8000/docs` | *None* | Interactive OpenAPI explorer and schema. |
+| **API Health Status** | `http://localhost:8000/health` | *None* | Verifies model loading & version alias. |
+| **Prometheus Metrics** | `http://localhost:8000/metrics` | *None* | Raw Prometheus text-format scrape output. |
+| **Prometheus Targets** | `http://localhost:9090/targets` | *None* | Proves API scraper target is `UP`. |
+| **Grafana Monitoring** | `http://localhost:3000` | `admin` / `admin` | Live 9-panel telemetry dashboard. |
+| **Apache Airflow** | `http://localhost:8080` | `admin` / `admin` | DAG visualization & pipeline run history. |
 
 ---
 
-## 15. Viva Questions (Short & Memorizable)
+## 4. Recommended Demonstration Sequence (8–10 Minutes)
 
-- **What is YOLO?** You Only Look Once. It's a real-time object detection model.
-- **Why YOLO?** It is fast and accurate, perfect for manufacturing lines where speed matters.
-- **What is an epoch?** One complete pass of the training dataset through the algorithm.
-- **What is mAP50?** Mean Average Precision at an Intersection over Union (IoU) threshold of 0.5. It measures how accurate our bounding boxes are.
-- **Why did you choose YOLOv8s?** It gave us a mAP50 of 0.81, which was significantly better than the baseline YOLOv8n, while still having acceptable CPU latency (346ms).
-- **What does MLflow do?** It tracks our training metrics and manages our model versions in a central registry.
-- **Why use FastAPI?** It's a modern, fast web framework for Python that auto-generates Swagger documentation.
-- **What is an endpoint?** A specific URL where an API can be accessed (like `/predict`).
-- **How is this different from simply training a YOLO model?** Training a model is just data science. MLOps (this project) handles the engineering: tracking versions, dynamically loading weights, and serving it reliably via a REST API.
+Follow this structured order for maximum impact:
+
+### Step 1: Problem & System Introduction (1 min)
+* **Action:** Open `http://localhost:8000` in the browser.
+* **Talking Point:** "VisionQC is an automated manufacturing defect inspection system. In electronics manufacturing, manual optical inspection of PCBs is error-prone. VisionQC uses a YOLOv8 object detection model to detect 6 surface defect types in real time, built within a complete MLOps lifecycle."
+
+### Step 2: Overview Dashboard & System Telemetry (1 min)
+* **Action:** Highlight the KPI cards on the **Dashboard** tab.
+* **Show:** API status (Online), Model status (Loaded), Active version (`VisionQC-Detector v2`), and 6 Defect Classes.
+* **Talking Point:** "Our dashboard pulls live metadata from our FastAPI health service, verifying that the registered Champion model is loaded into memory."
+
+### Step 3: Live PCB Defect Inspection (2.5 mins)
+* **Action:** Click the **Inspection** tab.
+  1. Drag and drop `data/prepared/test/images/pcb_defect_007.jpg` into the upload zone.
+  2. Point out the instant thumbnail preview and file size badge.
+  3. Click **Run Inspection**.
+* **Show:**
+  * Animated loading spinner during CPU inference.
+  * Output image with color-coded bounding boxes drawn server-side via OpenCV.
+  * Overlay badge showing the defect count (e.g., 6–8 defects found).
+  * Latency counter showing server inference time (~250–350 ms).
+  * Detection table displaying defect class chips (`mouse_bite`, `spur`, `short`) and confidence progress bars.
+* **Talking Point:** "This is actual model inference executing on CPU. The bounding boxes and confidence scores are calculated dynamically by the model, not read from ground truth annotations."
+
+### Step 4: Model Architecture & Experiment Tracking (1.5 mins)
+* **Action:** Click the **Model Info** tab in GUI, then briefly show `docs/MODEL_CARD.md`.
+* **Talking Point:** "We evaluated multiple architectures using MLflow. Our baseline YOLOv8n @ 320px achieved only 0.165 mAP50 due to tiny defect sizes. By increasing resolution to 640px and adopting YOLOv8s, our champion model achieved **0.8137 mAP50**, registered as `VisionQC-Detector@champion`."
+
+### Step 5: Data Versioning with DVC (1 min)
+* **Action:** In VS Code / terminal, show `data/raw/rashid.dvc` and `.dvc/config`.
+* **Talking Point:** "Raw datasets are versioned with DVC so that multi-gigabyte image data is never committed to Git, maintaining reproducible lineage with remote storage on D:."
+
+### Step 6: Pipeline Orchestration with Airflow (1 min)
+* **Action:** Open `http://localhost:8080` (or show `dags/visionqc_pipeline.py`).
+* **Talking Point:** "We orchestrated the training pipeline using Apache Airflow. The DAG has 6 stages: validate inputs, prepare dataset, train candidate, evaluate, compare against baseline, and record results. It runs in safe smoke-test mode by default so full training isn't triggered accidentally."
+
+### Step 7: Continuous Telemetry with Prometheus & Grafana (1.5 mins)
+* **Action:**
+  1. Open `http://localhost:8000/metrics` to show raw metrics.
+  2. Open `http://localhost:3000` → Dashboards → **VisionQC API Monitoring**.
+* **Show:** Live panels for Total API Requests, Request Rate, Latency Quantiles (p50/p95), HTTP status codes, and YOLO inference duration.
+* **Talking Point:** "Our FastAPI service is instrumented with `prometheus_client`. Prometheus scrapes metrics every 10 seconds, and Grafana visualizes throughput and latency distributions. High-cardinality labels and `/metrics` self-traffic are excluded to keep telemetry lightweight."
+
+### Step 8: GitHub Actions CI/CD (30 secs)
+* **Action:** Open `https://github.com/Anmol-tech17/VisionQC/actions` in browser.
+* **Talking Point:** "Every push to `main` triggers automated CI testing (import validation, config schema checking, and mock unit tests) and a Docker build workflow."
 
 ---
 
-## 16. 30-Second Project Explanation
+## 5. Essential Commands Reference
 
-"VisionQC is an MLOps pipeline for detecting PCB manufacturing defects. We processed an annotated dataset, trained YOLO object detection models, and tracked our experiments using MLflow. We then selected the best model, tagged it as our champion in the MLflow registry, and built a FastAPI service that dynamically loads this champion model to perform real-time inference on uploaded images."
+### Service Management (Ubuntu-D WSL)
+```bash
+# Check running containers
+docker ps
+
+# View live API logs
+docker compose logs -f api
+
+# View live Prometheus / Grafana logs
+docker compose -f docker-compose.monitoring.yml logs -f
+
+# Cleanly stop monitoring stack
+docker compose -f docker-compose.monitoring.yml down
+
+# Cleanly stop API stack
+docker compose down
+
+# Cleanly stop Airflow stack
+docker compose -f docker-compose.airflow.yml down
+```
+
+### Automated Testing (Windows PowerShell)
+```powershell
+Set-Location "C:\Users\dell\OneDrive\Desktop\MLOPS CP\VisionQC"
+
+# Run CI test suite (5 tests, mock-isolated, ~3 seconds)
+& "C:\Program Files\Python313\python.exe" -m pytest tests/test_ci.py -v
+
+# Run full API test with real YOLO inference (~15 seconds)
+& "C:\Program Files\Python313\python.exe" tests/test_api.py
+```
+
+### Git Verification
+```powershell
+# Verify synchronization with GitHub
+git fetch origin
+git status
+```
 
 ---
 
-## 17. 1-Minute Technical Explanation
+## 6. Live Demo Troubleshooting
 
-"Our architecture separates training and inference. For training, we convert COCO annotations to YOLO format, train the model, and log metrics to a local SQLite MLflow backend. For inference, we built a FastAPI application. On startup, the API queries MLflow for the `VisionQC-Detector@champion` model and loads the weights into memory using Ultralytics. When a client hits the `/predict` endpoint, the image is passed to the YOLO model, and we return the parsed JSON bounding boxes. This ensures our production API always uses the best tracked model without hardcoding file paths."
-
----
-
-## 18. Important Numbers/Details to Memorize
-
-- **Dataset:** 230 images (161 train, 34 val, 35 test)
-- **Classes:** 6 types of defects (e.g., missing_pad, mouse_bite, short, etc.)
-- **Model:** YOLOv8s (Version 2 is Champion)
-- **Image Size:** 640px
-- **Best mAP50:** 0.8137
-- **CPU Latency:** ~346 ms per image
-- **API Port:** 8000
-- **MLflow Port:** 5000
+| Issue | Root Cause | Verified Rapid Fix |
+|---|---|---|
+| **Port 8000 already in use** | A previous Python or container process is still bound to port 8000. | In PowerShell: `Get-Process python* \| Stop-Process -Force` or run FastAPI on another port: `& "C:\Program Files\Python313\python.exe" -m uvicorn src.visionqc.api.main:app --port 8001`. |
+| **WSL throws `E_UNEXPECTED`** | Windows WSL2 VM state needs a reset. | In PowerShell: `wsl --shutdown`, wait 5 seconds, then restart with `wsl.exe -d Ubuntu-D -u root -e docker ps`. |
+| **Model not loaded (`status: degraded`)** | `mlflow.db` path or fallback weights unresolvable. | The API automatically falls back to `artifacts/models/pcb_yolov8n_640/weights/best.pt`. Verify the file exists. |
+| **Grafana shows "No Data"** | Scraper hasn't collected samples yet or API is idle. | Generate traffic by submitting 2–3 images in the GUI or running: `1..5 \| ForEach-Object { Invoke-RestMethod http://localhost:8000/health }`. |
+| **Prometheus target is DOWN** | Docker container cannot reach `visionqc-api:8000`. | Confirm both containers are on `visionqc-net`: `docker network inspect visionqc-net`. If running API on host Windows, access Prometheus via host network. |
+| **Airflow UI not loading** | Airflow container takes ~30–45s to initialize SQLite DB on cold boot. | Run `docker compose -f docker-compose.airflow.yml logs -f airflow` to monitor startup progress. |
