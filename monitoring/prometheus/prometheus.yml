@@ -1,0 +1,19 @@
+# VisionQC — Prometheus Configuration
+# Scrapes the FastAPI inference service for application metrics.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "visionqc-api"
+    # The FastAPI service exposes /metrics via prometheus_client
+    # Use Docker Compose service name for networking
+    static_configs:
+      - targets: ["visionqc-api:8000"]
+        labels:
+          service: "visionqc"
+          component: "api"
+    metrics_path: /metrics
+    scrape_interval: 10s
+

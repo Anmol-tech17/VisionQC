@@ -35,9 +35,15 @@ services:
       timeout: 10s
       start_period: 90s
       retries: 3
+    networks:
+      - visionqc-net
     # Resource limits appropriate for i3-8130U (2 cores, ~8 GB in WSL)
     deploy:
       resources:
         limits:
           cpus: "1.5"
           memory: "3g"
+
+networks:
+  visionqc-net:
+    name: visionqc-net

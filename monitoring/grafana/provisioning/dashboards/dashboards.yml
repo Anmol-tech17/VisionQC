@@ -1,0 +1,17 @@
+# VisionQC — Grafana Dashboard Provisioning
+# Auto-loads dashboards from the provisioning directory.
+
+apiVersion: 1
+
+providers:
+  - name: "VisionQC Dashboards"
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false
+
