@@ -3,283 +3,942 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VisionQC — PCB Defect Inspection</title>
-  <meta name="description" content="VisionQC Phase 2: Real YOLOv8n PCB surface defect detection. Upload a PCB image to run actual ML inference with bounding boxes, class labels, and real confidence scores." />
+  <title>VisionQC — Industrial PCB Inspection</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg:          #0b0f1a;
-      --surface:     #111827;
-      --surface2:    #1a2235;
-      --border:      #1f2d44;
-      --accent:      #3b82f6;
-      --accent-glow: #3b82f640;
-      --accent2:     #06b6d4;
-      --success:     #10b981;
-      --warn:        #f59e0b;
-      --error:       #ef4444;
-      --text:        #e2e8f0;
-      --text-muted:  #64748b;
-      --text-dim:    #94a3b8;
-      --c0: #ff6464; --c1: #64ff64; --c2: #6464ff;
-      --c3: #ffd700; --c4: #ff64ff; --c5: #32dcff;
+      --bg-main:     #080D18;
+      --bg-secondary:#101827;
+      --bg-card:     #151F32;
+      --bg-card-alt: #1A2540;
+      --border:      #1E2D45;
+      --border-hover:#2A3D5E;
+      --primary:     #3B82F6;
+      --primary-bright:#60A5FA;
+      --primary-glow:#3B82F640;
+      --accent:      #06B6D4;
+      --text-primary:#F8FAFC;
+      --text-secondary:#94A3B8;
+      --text-muted:  #64748B;
+      --success:     #22C55E;
+      --warning:     #F59E0B;
+      --error:       #EF4444;
+      --radius:      12px;
+      --radius-lg:   16px;
     }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-    body::before {
-      content: ''; position: fixed; inset: 0;
-      background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
-      background-size: 40px 40px; opacity: 0.3; pointer-events: none; z-index: 0;
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
     }
-    .page-wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
 
-    /* Header */
-    header { padding: 36px 0 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); margin-bottom: 32px; flex-wrap: wrap; gap: 16px; }
-    .brand { display: flex; align-items: center; gap: 16px; }
-    .brand-icon { width: 48px; height: 48px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 0 24px var(--accent-glow); }
-    .brand-text h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .brand-text p { font-size: 12px; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px; }
+    /* Subtle grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(30,45,69,0.25) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30,45,69,0.25) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-    /* Status pills */
-    .status-bar { display: flex; gap: 10px; flex-wrap: wrap; }
-    .status-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border); }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); transition: background 0.3s; }
-    .dot.ok  { background: var(--success); box-shadow: 0 0 8px var(--success); }
-    .dot.bad { background: var(--error);   box-shadow: 0 0 8px var(--error); }
-    .dot.loading { animation: pulse 1s infinite; background: var(--warn); }
+    /* Gradient accent overlay at top */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 300px;
+      background: linear-gradient(180deg, rgba(59,130,246,0.06) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app { position: relative; z-index: 1; }
+
+    /* ========= NAV ========= */
+    .top-nav {
+      background: rgba(16,24,39,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+    }
+    .nav-logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+    .nav-title {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--primary-bright), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.3px;
+    }
+    .nav-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+    }
+    .nav-tab {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .nav-tab:hover { color: var(--text-primary); background: rgba(59,130,246,0.1); }
+    .nav-tab.active {
+      color: var(--primary-bright);
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.2);
+    }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: all 0.3s;
+    }
+    .status-dot.ok { background: var(--success); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+    .status-dot.err { background: var(--error); box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+    .status-dot.loading { background: var(--warning); animation: pulse 1.2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-    /* Main grid */
-    .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-    @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+    /* ========= MAIN CONTENT ========= */
+    .main-content {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
 
-    /* Card */
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; transition: border-color 0.3s; }
-    .card:hover { border-color: #2a3a56; }
-    .card-title { font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-    .card-title span { font-size: 16px; }
+    /* Page sections */
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    /* ========= DASHBOARD PAGE ========= */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 900px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .stats-row { grid-template-columns: 1fr; } }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      transition: all 0.2s;
+    }
+    .stat-card:hover { border-color: var(--border-hover); }
+    .stat-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+    .stat-icon.blue { background: rgba(59,130,246,0.15); }
+    .stat-icon.green { background: rgba(34,197,94,0.15); }
+    .stat-icon.amber { background: rgba(245,158,11,0.15); }
+    .stat-icon.cyan { background: rgba(6,182,212,0.15); }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1.1;
+    }
+    .stat-value.blue { color: var(--primary-bright); }
+    .stat-value.green { color: var(--success); }
+    .stat-value.amber { color: var(--warning); }
+    .stat-value.cyan { color: var(--accent); }
+
+    /* ========= CARDS ========= */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--border-hover); }
+    .card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-title-icon {
+      font-size: 16px;
+    }
+    .card-body { padding: 24px; }
+
+    /* ========= INSPECTION PAGE ========= */
+    .inspection-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 860px) { .inspection-grid { grid-template-columns: 1fr; } }
 
     /* Upload zone */
-    .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; position: relative; background: var(--bg); }
-    .upload-zone.dragging { border-color: var(--accent); background: var(--accent-glow); }
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(8,13,24,0.5);
+      position: relative;
+    }
+    .upload-zone:hover { border-color: var(--primary); background: rgba(59,130,246,0.04); }
+    .upload-zone.dragging { border-color: var(--primary); background: rgba(59,130,246,0.08); }
     .upload-zone.has-file { border-color: var(--success); border-style: solid; }
-    .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-    .upload-icon { font-size: 40px; margin-bottom: 12px; display: block; transition: transform 0.3s; }
-    .upload-zone:hover .upload-icon { transform: translateY(-4px); }
-    .upload-label { font-size: 15px; font-weight: 500; color: var(--text-dim); }
+    .upload-zone input[type=file] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 44px; margin-bottom: 16px; display: block; }
+    .upload-text { font-size: 15px; font-weight: 500; color: var(--text-secondary); }
     .upload-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
-    .filename-display { margin-top: 14px; padding: 8px 14px; background: var(--surface2); border-radius: 8px; font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--accent2); display: none; word-break: break-all; }
-    .thumb-wrap { margin-top: 16px; display: none; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); max-height: 180px; }
-    .thumb-wrap img { width: 100%; height: 180px; object-fit: cover; display: block; }
 
-    /* Buttons */
-    #inspectBtn { margin-top: 20px; width: 100%; padding: 14px; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif; border: none; border-radius: 10px; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; transition: all 0.25s; }
-    #inspectBtn:disabled { opacity: 0.5; cursor: not-allowed; }
-    #inspectBtn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 8px 24px #3b82f650; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff4; border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+    .file-info {
+      margin-top: 16px;
+      padding: 10px 16px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      display: none;
+      word-break: break-all;
+    }
+    .thumb-preview {
+      margin-top: 16px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      display: none;
+      max-height: 200px;
+    }
+    .thumb-preview img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Inspect button */
+    .btn-inspect {
+      margin-top: 20px;
+      width: 100%;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), #2563EB);
+      color: #fff;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-inspect:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-inspect:not(:disabled):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(59,130,246,0.35);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Info badge */
-    .info-badge { margin-top: 16px; padding: 10px 14px; border-radius: 8px; background: #1e3a5f33; border: 1px solid #3b82f630; font-size: 12px; color: var(--text-dim); line-height: 1.6; }
-    .info-badge strong { color: var(--accent2); }
-    .model-badge { margin-top: 10px; padding: 8px 14px; border-radius: 8px; background: #06b6d415; border: 1px solid #06b6d440; font-size: 12px; color: var(--accent2); font-family: 'JetBrains Mono', monospace; display: none; }
+    .error-banner {
+      margin-top: 14px;
+      padding: 12px 16px;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px;
+      font-size: 13px;
+      color: #FCA5A5;
+      display: none;
+    }
 
-    /* Error */
-    .error-msg { margin-top: 14px; padding: 12px 16px; background: #3b000033; border: 1px solid var(--error); border-radius: 8px; font-size: 13px; color: #fca5a5; display: none; }
+    /* Info panel on right side */
+    .info-panel .info-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(30,45,69,0.5);
+      font-size: 13px;
+    }
+    .info-panel .info-item:last-child { border-bottom: none; }
+    .info-label { color: var(--text-muted); }
+    .info-value { color: var(--text-primary); font-weight: 500; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
 
-    /* System status stats */
-    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .stat-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-    .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
-    .stat-value { font-size: 22px; font-weight: 700; color: var(--accent2); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+    .class-legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .legend-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding: 6px 10px;
+      background: rgba(8,13,24,0.4);
+      border-radius: 6px;
+    }
+    .legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
 
-    /* Legend */
-    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-dim); }
-    .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+    /* ========= RESULTS ========= */
+    .results-section {
+      margin-top: 28px;
+      display: none;
+      animation: fadeSlide 0.4s ease;
+    }
+    @keyframes fadeSlide { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 
-    /* Results */
-    #resultsPanel { display: none; animation: fadeIn 0.4s ease; }
-    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-    .full-card { grid-column: 1 / -1; }
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 860px) { .results-grid { grid-template-columns: 1fr; } }
 
-    /* Annotated image */
-    .result-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
-    @media (max-width: 768px) { .result-grid { grid-template-columns: 1fr; } }
-    .annotated-wrap { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: #000; position: relative; }
-    .annotated-wrap img { width: 100%; display: block; max-height: 420px; object-fit: contain; }
-    .defect-count-badge { position: absolute; top: 12px; right: 12px; background: #000a; backdrop-filter: blur(6px); border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 600; }
-    .defect-count-badge .num { font-size: 22px; font-weight: 700; color: var(--accent); display: block; line-height: 1.1; }
-    .prediction-label { position: absolute; top: 12px; left: 12px; background: #000a; backdrop-filter: blur(6px); border: 1px solid #3b82f640; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+    .annotated-container {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+      position: relative;
+    }
+    .annotated-container img {
+      width: 100%;
+      display: block;
+      max-height: 480px;
+      object-fit: contain;
+    }
+    .result-overlay {
+      position: absolute;
+      top: 12px; left: 12px;
+      display: flex;
+      gap: 8px;
+    }
+    .result-badge {
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(59,130,246,0.3);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+    .result-badge.count {
+      position: absolute;
+      top: 12px; right: 12px;
+      left: auto;
+      border-color: rgba(59,130,246,0.4);
+    }
+    .result-badge .big { font-size: 20px; font-weight: 700; color: var(--primary-bright); display: block; line-height: 1.1; }
 
     /* Detection table */
-    .detection-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .detection-table th { text-align: left; padding: 8px 14px; font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
-    .detection-table td { padding: 9px 14px; border-bottom: 1px solid #1a2235; }
-    .detection-table tr:last-child td { border-bottom: none; }
-    .detection-table tr:hover td { background: var(--surface2); }
+    .det-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .det-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+    }
+    .det-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(30,45,69,0.3);
+      vertical-align: middle;
+    }
+    .det-table tr:last-child td { border-bottom: none; }
+    .det-table tr:hover td { background: rgba(21,31,50,0.5); }
 
-    .class-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid; }
-    .class-dot { width: 7px; height: 7px; border-radius: 50%; }
-    .conf-bar-wrap { width: 120px; }
-    .conf-bar { height: 4px; border-radius: 2px; background: var(--surface2); overflow: hidden; margin-top: 4px; }
-    .conf-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .class-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid;
+    }
+    .class-tag-dot { width: 7px; height: 7px; border-radius: 50%; }
 
-    /* no-results */
-    .no-results { text-align: center; padding: 32px; color: var(--text-muted); }
-    .no-results .big-icon { font-size: 40px; display: block; margin-bottom: 10px; }
+    .conf-cell { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+    .conf-bar { height: 4px; border-radius: 2px; background: var(--bg-secondary); overflow: hidden; margin-top: 4px; width: 100px; }
+    .conf-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); }
 
+    .no-defects {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+    .no-defects .icon { font-size: 40px; display: block; margin-bottom: 12px; }
+
+    .timing-badge {
+      margin-top: 16px;
+      padding: 10px 16px;
+      background: rgba(6,182,212,0.08);
+      border: 1px solid rgba(6,182,212,0.2);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      display: none;
+    }
+
+    /* ========= MODEL INFO PAGE ========= */
+    .model-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 860px) { .model-grid { grid-template-columns: 1fr; } }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(30,45,69,0.4);
+      font-size: 14px;
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-name { color: var(--text-secondary); }
+    .metric-val { font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--primary-bright); }
+
+    /* ========= SYSTEM STATUS PAGE ========= */
+    .service-list { display: grid; gap: 12px; }
+    .service-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: rgba(8,13,24,0.4);
+      border-radius: var(--radius);
+      border: 1px solid rgba(30,45,69,0.3);
+    }
+    .service-name { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+    .service-badge {
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .service-badge.up { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
+    .service-badge.down { background: rgba(239,68,68,0.15); color: var(--error); border: 1px solid rgba(239,68,68,0.3); }
+    .service-badge.unknown { background: rgba(100,116,139,0.15); color: var(--text-muted); border: 1px solid rgba(100,116,139,0.3); }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .nav-tabs { display: none; }
+      .nav-status { gap: 10px; }
+    }
+
+    /* Scrollbar */
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-track { background: var(--bg-main); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   </style>
 </head>
 <body>
-<div class="page-wrap">
+<div class="app">
 
-  <!-- Header -->
-  <header>
-    <div class="brand">
-      <div class="brand-icon">🔬</div>
-      <div class="brand-text">
-        <h1>VisionQC</h1>
-        <p>Automated PCB Defect Inspection — Phase 2 · Real ML Inference</p>
-      </div>
-    </div>
-    <div class="status-bar">
-      <div class="status-pill" id="pillApi"><div class="dot loading" id="dotApi"></div><span id="labelApi">API …</span></div>
-      <div class="status-pill" id="pillModel"><div class="dot loading" id="dotModel"></div><span id="labelModel">Model …</span></div>
-      <div class="status-pill" id="pillDataset"><div class="dot loading" id="dotDataset"></div><span id="labelDataset">Dataset …</span></div>
-    </div>
-  </header>
-
-  <!-- Main grid -->
-  <div class="main-grid">
-
-    <!-- Upload card -->
-    <div class="card">
-      <div class="card-title"><span>📤</span> Upload PCB Image</div>
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept="image/jpeg,image/png" aria-label="Upload PCB image" />
-        <span class="upload-icon">🖼️</span>
-        <div class="upload-label">Drop image here or click to browse</div>
-        <div class="upload-hint">JPEG or PNG · Any PCB image</div>
-      </div>
-      <div class="filename-display" id="filenameDisplay"></div>
-      <div class="thumb-wrap" id="thumbWrap"><img id="thumbImg" alt="Preview" /></div>
-      <button id="inspectBtn" disabled>Inspect PCB</button>
-      <div class="error-msg" id="errorMsg"></div>
-      <div class="model-badge" id="modelBadge"></div>
-      <div class="info-badge">
-        <strong>Real ML Inference:</strong> Detections come from a trained YOLOv8n model.
-        Confidence scores are actual model outputs (not ground-truth labels).
-        The model was fine-tuned on the PCB defect dataset using transfer learning from COCO pretrained weights.
-      </div>
-    </div>
-
-    <!-- System status card -->
-    <div class="card">
-      <div class="card-title"><span>📊</span> System Status</div>
-      <div class="stat-grid">
-        <div class="stat-item"><div class="stat-label">Dataset Images</div><div class="stat-value" id="statImages">—</div></div>
-        <div class="stat-item"><div class="stat-label">Annotations</div><div class="stat-value" id="statAnnotations">—</div></div>
-        <div class="stat-item"><div class="stat-label">Defect Classes</div><div class="stat-value" id="statClasses">—</div></div>
-        <div class="stat-item"><div class="stat-label">Conf. Threshold</div><div class="stat-value" id="statConf">—</div></div>
-      </div>
-      <div class="card-title" style="margin-top:24px;"><span>🎨</span> Defect Classes</div>
-      <div class="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:var(--c0)"></div>missing_pad</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--c1)"></div>mouse_bite</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--c2)"></div>open_circuit</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--c3)"></div>short</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--c4)"></div>spur</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--c5)"></div>spurious_copper</div>
-      </div>
-    </div>
-
-    <!-- Results card -->
-    <div class="card full-card" id="resultsPanel">
-      <div class="card-title"><span>🔍</span> Inspection Results — <span id="resultModelLabel" style="color:var(--accent2);font-size:12px;margin-left:4px;">Model Prediction</span></div>
-      <div class="result-grid">
-        <div class="annotated-wrap">
-          <div class="prediction-label" id="predLabel">Model Prediction</div>
-          <img id="annotatedImg" alt="Annotated PCB image" />
-          <div class="defect-count-badge"><span class="num" id="defectCount">0</span>Defects</div>
-        </div>
+  <!-- ========= NAVIGATION ========= -->
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="#">
+        <div class="nav-logo">🔬</div>
         <div>
-          <div id="noResults" class="no-results" style="display:none;">
-            <span class="big-icon">✅</span>
-            No defects detected above confidence threshold.<br>
-            <small style="color:var(--text-muted)">Try a lower threshold or a different image.</small>
+          <div class="nav-title">VisionQC</div>
+          <div class="nav-subtitle">Automated PCB Inspection</div>
+        </div>
+      </a>
+
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-page="dashboard">Dashboard</button>
+        <button class="nav-tab" data-page="inspection">Inspection</button>
+        <button class="nav-tab" data-page="model">Model Info</button>
+        <button class="nav-tab" data-page="system">System Status</button>
+      </div>
+
+      <div class="nav-status">
+        <div class="status-indicator">
+          <div class="status-dot loading" id="dotApi"></div>
+          <span id="lblApi">API</span>
+        </div>
+        <div class="status-indicator">
+          <div class="status-dot loading" id="dotModel"></div>
+          <span id="lblModel">Model</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main-content">
+
+    <!-- ========= DASHBOARD ========= -->
+    <div class="page-section active" id="page-dashboard">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon blue">🛡️</div>
+          <div class="stat-label">API Status</div>
+          <div class="stat-value blue" id="dashApiStatus">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">🤖</div>
+          <div class="stat-label">Model Status</div>
+          <div class="stat-value green" id="dashModelStatus">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon cyan">🏗️</div>
+          <div class="stat-label">Model Version</div>
+          <div class="stat-value cyan" id="dashModelVersion">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon amber">🎯</div>
+          <div class="stat-label">Defect Classes</div>
+          <div class="stat-value amber" id="dashClassCount">—</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">📋</span> Quick Actions</div>
           </div>
-          <table class="detection-table" id="detectionTable" style="display:none;">
-            <thead><tr><th>#</th><th>Defect Class</th><th>Confidence</th></tr></thead>
-            <tbody id="detectionBody"></tbody>
-          </table>
+          <div class="card-body">
+            <p style="color:var(--text-secondary); font-size:14px; margin-bottom:16px;">
+              Upload a PCB image for automated defect detection using the trained YOLOv8 model.
+            </p>
+            <button class="btn-inspect" onclick="switchPage('inspection')" style="background:linear-gradient(135deg, var(--primary), var(--accent));">
+              🔍 Go to Inspection
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">📊</span> Model Details</div>
+          </div>
+          <div class="card-body">
+            <div class="info-panel">
+              <div class="info-item"><span class="info-label">Architecture</span><span class="info-value">YOLOv8n</span></div>
+              <div class="info-item"><span class="info-label">Model Name</span><span class="info-value" id="dashModelName">—</span></div>
+              <div class="info-item"><span class="info-label">Conf. Threshold</span><span class="info-value" id="dashConf">—</span></div>
+              <div class="info-item"><span class="info-label">Classes</span><span class="info-value" id="dashClasses">—</span></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-  </div><!-- /main-grid -->
-</div><!-- /page-wrap -->
+    <!-- ========= INSPECTION ========= -->
+    <div class="page-section" id="page-inspection">
+      <div class="inspection-grid">
+
+        <!-- Left: Upload -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">📤</span> Upload PCB Image</div>
+          </div>
+          <div class="card-body">
+            <div class="upload-zone" id="uploadZone">
+              <input type="file" id="fileInput" accept="image/jpeg,image/png" aria-label="Upload PCB image" />
+              <span class="upload-icon">🖼️</span>
+              <div class="upload-text">Drop image here or click to browse</div>
+              <div class="upload-hint">JPEG or PNG — Any PCB board image</div>
+            </div>
+            <div class="file-info" id="fileInfo"></div>
+            <div class="thumb-preview" id="thumbPreview"><img id="thumbImg" alt="Preview" /></div>
+            <button class="btn-inspect" id="inspectBtn" disabled>
+              ⚡ Run Inspection
+            </button>
+            <div class="error-banner" id="errorBanner"></div>
+            <div class="timing-badge" id="timingBadge"></div>
+          </div>
+        </div>
+
+        <!-- Right: Info -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">ℹ️</span> Inspection Info</div>
+          </div>
+          <div class="card-body">
+            <div class="info-panel">
+              <div class="info-item"><span class="info-label">Model</span><span class="info-value" id="infoModel">—</span></div>
+              <div class="info-item"><span class="info-label">Confidence ≥</span><span class="info-value" id="infoConf">—</span></div>
+              <div class="info-item"><span class="info-label">Input Size</span><span class="info-value">640×640</span></div>
+              <div class="info-item"><span class="info-label">Framework</span><span class="info-value">Ultralytics YOLOv8</span></div>
+            </div>
+            <div style="margin-top:20px;">
+              <div class="stat-label" style="margin-bottom:10px;">Detectable Defect Classes</div>
+              <div class="class-legend">
+                <div class="legend-chip"><div class="legend-dot" style="background:#ff6464"></div>missing_pad</div>
+                <div class="legend-chip"><div class="legend-dot" style="background:#64ff64"></div>mouse_bite</div>
+                <div class="legend-chip"><div class="legend-dot" style="background:#6464ff"></div>open_circuit</div>
+                <div class="legend-chip"><div class="legend-dot" style="background:#ffd700"></div>short</div>
+                <div class="legend-chip"><div class="legend-dot" style="background:#ff64ff"></div>spur</div>
+                <div class="legend-chip"><div class="legend-dot" style="background:#32dcff"></div>spurious_copper</div>
+              </div>
+            </div>
+            <div style="margin-top:20px; padding:14px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.15); border-radius:8px;">
+              <p style="font-size:12px; color:var(--text-secondary); line-height:1.6;">
+                <strong style="color:var(--primary-bright);">Real ML Inference:</strong>
+                All detections come from the trained YOLOv8n model.
+                Confidence scores are actual model outputs — not ground-truth annotations.
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Results Section -->
+      <div class="results-section" id="resultsSection">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🔍</span> Inspection Results</div>
+            <span id="resultLabel" style="font-size:12px; color:var(--accent); font-weight:500;">Model Prediction</span>
+          </div>
+          <div class="card-body">
+            <div class="results-grid">
+              <div class="annotated-container">
+                <div class="result-overlay">
+                  <div class="result-badge" id="predBadge" style="color:var(--primary-bright);">Model Prediction</div>
+                </div>
+                <div class="result-badge count" id="countBadge"><span class="big" id="defectCount">0</span>Defects</div>
+                <img id="annotatedImg" alt="Annotated PCB image" />
+              </div>
+              <div>
+                <div id="noResults" class="no-defects" style="display:none;">
+                  <span class="icon">✅</span>
+                  No defects detected above the confidence threshold.<br>
+                  <small style="color:var(--text-muted)">The PCB appears to pass quality inspection.</small>
+                </div>
+                <table class="det-table" id="detTable" style="display:none;">
+                  <thead><tr><th>#</th><th>Defect Class</th><th>Confidence</th></tr></thead>
+                  <tbody id="detBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= MODEL INFO ========= -->
+    <div class="page-section" id="page-model">
+      <div class="model-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🤖</span> Model Architecture</div>
+          </div>
+          <div class="card-body">
+            <div class="metric-row"><span class="metric-name">Architecture</span><span class="metric-val">YOLOv8n (Nano)</span></div>
+            <div class="metric-row"><span class="metric-name">Backbone</span><span class="metric-val">CSPDarknet</span></div>
+            <div class="metric-row"><span class="metric-name">Input Size</span><span class="metric-val">640 × 640</span></div>
+            <div class="metric-row"><span class="metric-name">Task</span><span class="metric-val">Object Detection</span></div>
+            <div class="metric-row"><span class="metric-name">Pretrained</span><span class="metric-val">COCO → PCB fine-tuned</span></div>
+            <div class="metric-row"><span class="metric-name">Framework</span><span class="metric-val">Ultralytics 8.x</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">📈</span> Model Information</div>
+          </div>
+          <div class="card-body">
+            <div class="metric-row"><span class="metric-name">Model Name</span><span class="metric-val" id="miModelName">—</span></div>
+            <div class="metric-row"><span class="metric-name">Version</span><span class="metric-val" id="miVersion">—</span></div>
+            <div class="metric-row"><span class="metric-name">Conf. Threshold</span><span class="metric-val" id="miConf">—</span></div>
+            <div class="metric-row"><span class="metric-name">Classes</span><span class="metric-val" id="miNumClasses">—</span></div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🎨</span> Detectable Defect Classes</div>
+          </div>
+          <div class="card-body">
+            <div class="class-legend" style="grid-template-columns: repeat(3, 1fr);">
+              <div class="legend-chip"><div class="legend-dot" style="background:#ff6464"></div>missing_pad — Missing solder pad</div>
+              <div class="legend-chip"><div class="legend-dot" style="background:#64ff64"></div>mouse_bite — Mouse bite defect</div>
+              <div class="legend-chip"><div class="legend-dot" style="background:#6464ff"></div>open_circuit — Broken trace</div>
+              <div class="legend-chip"><div class="legend-dot" style="background:#ffd700"></div>short — Solder bridge/short</div>
+              <div class="legend-chip"><div class="legend-dot" style="background:#ff64ff"></div>spur — Conductor spur</div>
+              <div class="legend-chip"><div class="legend-dot" style="background:#32dcff"></div>spurious_copper — Excess copper</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= SYSTEM STATUS ========= -->
+    <div class="page-section" id="page-system">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🔌</span> Service Status</div>
+          </div>
+          <div class="card-body">
+            <div class="service-list">
+              <div class="service-item">
+                <div class="service-name">🌐 FastAPI Server</div>
+                <div class="service-badge up" id="svcApi">Checking…</div>
+              </div>
+              <div class="service-item">
+                <div class="service-name">🤖 YOLO Model</div>
+                <div class="service-badge unknown" id="svcModel">Checking…</div>
+              </div>
+              <div class="service-item">
+                <div class="service-name">📊 Prometheus</div>
+                <div class="service-badge unknown" id="svcProm">Checking…</div>
+              </div>
+              <div class="service-item">
+                <div class="service-name">📈 Grafana</div>
+                <div class="service-badge unknown" id="svcGrafana">Checking…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">🔗</span> Service URLs</div>
+          </div>
+          <div class="card-body">
+            <div class="info-panel">
+              <div class="info-item"><span class="info-label">API Docs</span><span class="info-value"><a href="/docs" style="color:var(--primary-bright);text-decoration:none;" target="_blank">/docs</a></span></div>
+              <div class="info-item"><span class="info-label">Health Check</span><span class="info-value"><a href="/health" style="color:var(--primary-bright);text-decoration:none;" target="_blank">/health</a></span></div>
+              <div class="info-item"><span class="info-label">Prometheus</span><span class="info-value"><a href="http://localhost:9090" style="color:var(--primary-bright);text-decoration:none;" target="_blank">:9090</a></span></div>
+              <div class="info-item"><span class="info-label">Grafana</span><span class="info-value"><a href="http://localhost:3000" style="color:var(--primary-bright);text-decoration:none;" target="_blank">:3000</a></span></div>
+              <div class="info-item"><span class="info-label">Airflow</span><span class="info-value"><a href="http://localhost:8080" style="color:var(--primary-bright);text-decoration:none;" target="_blank">:8080</a></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /app -->
 
 <script>
-/* Class colours (model ID 0-5) */
-const CLASS_COLORS = [
-  { bg:'#ff646420', border:'#ff6464', dot:'#ff6464' }, // 0 missing_pad
-  { bg:'#64ff6420', border:'#64ff64', dot:'#64ff64' }, // 1 mouse_bite
-  { bg:'#6464ff20', border:'#6464ff', dot:'#6464ff' }, // 2 open_circuit
-  { bg:'#ffd70020', border:'#ffd700', dot:'#ffd700' }, // 3 short
-  { bg:'#ff64ff20', border:'#ff64ff', dot:'#ff64ff' }, // 4 spur
-  { bg:'#32dcff20', border:'#32dcff', dot:'#32dcff' }, // 5 spurious_copper
+/* ========= Class colors (indexed by model class ID 0-5) ========= */
+const CLS_COLORS = [
+  { bg:'#ff646418', border:'#ff6464', dot:'#ff6464' }, // 0 missing_pad
+  { bg:'#64ff6418', border:'#64ff64', dot:'#64ff64' }, // 1 mouse_bite
+  { bg:'#6464ff18', border:'#6464ff', dot:'#6464ff' }, // 2 open_circuit
+  { bg:'#ffd70018', border:'#ffd700', dot:'#ffd700' }, // 3 short
+  { bg:'#ff64ff18', border:'#ff64ff', dot:'#ff64ff' }, // 4 spur
+  { bg:'#32dcff18', border:'#32dcff', dot:'#32dcff' }, // 5 spurious_copper
 ];
-const CLASS_NAMES = ['missing_pad','mouse_bite','open_circuit','short','spur','spurious_copper'];
 
-function classColour(classId) {
-  return CLASS_COLORS[classId] || { bg:'#ffffff10', border:'#aaa', dot:'#aaa' };
+function getColor(id) {
+  return CLS_COLORS[id] || { bg:'#ffffff10', border:'#aaa', dot:'#aaa' };
 }
 
-/* Health + validation */
+/* ========= Navigation ========= */
+function switchPage(name) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.add('active');
+  const tab = document.querySelector(`.nav-tab[data-page="${name}"]`);
+  if (tab) tab.classList.add('active');
+}
+
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => switchPage(tab.dataset.page));
+});
+
+/* ========= Health check ========= */
+let healthData = null;
+
 async function loadHealth() {
   try {
-    const data = await fetch('/health').then(r => r.json());
-    setDot('Api',     true,              'API');
-    setDot('Model',   data.model_loaded, data.model_loaded ? 'Model' : 'No model');
-    const conf = data.confidence_threshold != null ? data.confidence_threshold.toFixed(2) : '—';
-    document.getElementById('statConf').textContent = conf;
-    // Show model badge
-    if (data.model_name) {
-      const badge = document.getElementById('modelBadge');
-      badge.textContent = 'Model: ' + data.model_name + ' · conf≥' + conf;
-      badge.style.display = 'block';
-    }
-  } catch { setDot('Api', false, 'API'); setDot('Model', false, 'Model'); }
-}
+    const res = await fetch('/health');
+    const data = await res.json();
+    healthData = data;
+    const loaded = data.model_loaded || data.status === 'ok';
 
-async function loadValidation() {
+    // Nav dots
+    setDot('Api', true, 'API ✓');
+    setDot('Model', loaded, loaded ? 'Model ✓' : 'Model ✗');
+
+    // Dashboard
+    document.getElementById('dashApiStatus').textContent = 'Online';
+    document.getElementById('dashModelStatus').textContent = loaded ? 'Loaded' : 'Error';
+    document.getElementById('dashModelVersion').textContent = data.model_version || '—';
+    document.getElementById('dashClassCount').textContent = data.num_classes || '6';
+    document.getElementById('dashModelName').textContent = data.model_name || '—';
+    document.getElementById('dashConf').textContent = data.confidence_threshold != null ? data.confidence_threshold.toFixed(2) : '0.25';
+    document.getElementById('dashClasses').textContent = (data.class_names || []).join(', ') || '6 classes';
+
+    // Inspection info
+    document.getElementById('infoModel').textContent = data.model_name || '—';
+    document.getElementById('infoConf').textContent = data.confidence_threshold != null ? data.confidence_threshold.toFixed(2) : '0.25';
+
+    // Model page
+    document.getElementById('miModelName').textContent = data.model_name || '—';
+    document.getElementById('miVersion').textContent = data.model_version || '—';
+    document.getElementById('miConf').textContent = data.confidence_threshold != null ? data.confidence_threshold.toFixed(2) : '0.25';
+    document.getElementById('miNumClasses').textContent = data.num_classes || '6';
+
+    // System page
+    setService('svcApi', true, 'Online');
+    setService('svcModel', loaded, loaded ? 'Loaded' : 'Error');
+  } catch (e) {
+    setDot('Api', false, 'API ✗');
+    setDot('Model', false, 'Model ✗');
+    document.getElementById('dashApiStatus').textContent = 'Offline';
+    setService('svcApi', false, 'Offline');
+    setService('svcModel', null, 'Unknown');
+  }
+
+  // Check Prometheus
   try {
-    const data = await fetch('/validate').then(r => r.json());
-    setDot('Dataset', data.passed, 'Dataset');
-    document.getElementById('statImages').textContent      = data.image_count ?? '—';
-    document.getElementById('statAnnotations').textContent = data.annotation_count ?? '—';
-    document.getElementById('statClasses').textContent     = data.defect_class_count ?? '—';
-  } catch { setDot('Dataset', false, 'Dataset'); }
+    const r = await fetch('/metrics');
+    setService('svcProm', r.ok, r.ok ? 'Available' : 'Error');
+  } catch { setService('svcProm', null, 'Not available'); }
+
+  // Grafana (cross-origin, just mark unknown)
+  setService('svcGrafana', null, 'Check :3000');
 }
 
 function setDot(id, ok, label) {
-  document.getElementById('dot' + id).className = 'dot ' + (ok ? 'ok' : 'bad');
-  document.getElementById('label' + id).textContent = label + (ok ? ' ✓' : ' ✗');
+  const dot = document.getElementById('dot' + id);
+  const lbl = document.getElementById('lbl' + id);
+  if (dot) dot.className = 'status-dot ' + (ok ? 'ok' : 'err');
+  if (lbl) lbl.textContent = label;
 }
 
-/* File handling */
-const fileInput       = document.getElementById('fileInput');
-const uploadZone      = document.getElementById('uploadZone');
-const filenameDisplay = document.getElementById('filenameDisplay');
-const thumbWrap       = document.getElementById('thumbWrap');
-const thumbImg        = document.getElementById('thumbImg');
-const inspectBtn      = document.getElementById('inspectBtn');
-const errorMsg        = document.getElementById('errorMsg');
+function setService(id, ok, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'service-badge ' + (ok === true ? 'up' : ok === false ? 'down' : 'unknown');
+}
+
+/* ========= File handling ========= */
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+const fileInfoEl = document.getElementById('fileInfo');
+const thumbPreview = document.getElementById('thumbPreview');
+const thumbImg = document.getElementById('thumbImg');
+const inspectBtn = document.getElementById('inspectBtn');
+const errorBanner = document.getElementById('errorBanner');
 let selectedFile = null;
 
 fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
@@ -293,84 +952,101 @@ uploadZone.addEventListener('drop', e => {
 function handleFile(file) {
   selectedFile = file;
   uploadZone.classList.add('has-file');
-  filenameDisplay.textContent = file.name;
-  filenameDisplay.style.display = 'block';
+  fileInfoEl.textContent = `📎 ${file.name}  (${(file.size / 1024).toFixed(1)} KB)`;
+  fileInfoEl.style.display = 'block';
   inspectBtn.disabled = false;
   hideError();
   const reader = new FileReader();
-  reader.onload = e => { thumbImg.src = e.target.result; thumbWrap.style.display = 'block'; };
+  reader.onload = e => { thumbImg.src = e.target.result; thumbPreview.style.display = 'block'; };
   reader.readAsDataURL(file);
 }
 
-/* Inspect */
+/* ========= Inspect ========= */
 inspectBtn.addEventListener('click', async () => {
   if (!selectedFile) return;
   hideError(); setLoading(true);
+  document.getElementById('timingBadge').style.display = 'none';
+
   try {
     const form = new FormData();
     form.append('file', selectedFile);
-    const res  = await fetch('/predict', { method: 'POST', body: form });
+    const t0 = performance.now();
+    const res = await fetch('/predict', { method: 'POST', body: form });
+    const elapsed = performance.now() - t0;
     const data = await res.json();
+
     if (!res.ok) { showError(data.detail || 'Inspection failed.'); return; }
-    renderResults(data);
-  } catch { showError('Could not reach the VisionQC API. Is the server running?'); }
-  finally { setLoading(false); }
+    renderResults(data, elapsed);
+  } catch (e) {
+    showError('Could not reach the VisionQC API. Is the server running?');
+  } finally { setLoading(false); }
 });
 
 function setLoading(on) {
   inspectBtn.disabled = on;
   inspectBtn.innerHTML = on
-    ? '<span class="spinner"></span>Running YOLOv8n inference…'
-    : 'Inspect PCB';
+    ? '<span class="spinner"></span> Running inference…'
+    : '⚡ Run Inspection';
 }
 
-/* Render results */
-function renderResults(data) {
-  const panel = document.getElementById('resultsPanel');
-  panel.style.display = 'block';
+/* ========= Render results ========= */
+function renderResults(data, clientMs) {
+  const section = document.getElementById('resultsSection');
+  section.style.display = 'block';
+
+  // Annotated image
   if (data.annotated_image) {
     document.getElementById('annotatedImg').src = 'data:image/jpeg;base64,' + data.annotated_image;
   }
+
+  // Count
   document.getElementById('defectCount').textContent = data.count ?? 0;
 
-  // Prediction label
-  const predType = data.prediction_type === 'yolo_model' ? 'Model Prediction' : 'Ground Truth';
-  document.getElementById('predLabel').textContent = predType;
-  document.getElementById('resultModelLabel').textContent = predType;
+  // Timing badge
+  const tb = document.getElementById('timingBadge');
+  const serverMs = data.inference_time_ms;
+  if (serverMs) {
+    tb.textContent = `⏱ Inference: ${serverMs} ms (server)  ·  ${Math.round(clientMs)} ms (round-trip)`;
+    tb.style.display = 'block';
+  }
 
-  const tbody = document.getElementById('detectionBody');
-  const table = document.getElementById('detectionTable');
+  // Detections table
+  const tbody = document.getElementById('detBody');
+  const table = document.getElementById('detTable');
   const noRes = document.getElementById('noResults');
   tbody.innerHTML = '';
 
-  if (!data.detections || data.detections.length === 0) {
-    table.style.display = 'none'; noRes.style.display = 'block'; return;
+  const dets = data.detections || data.predictions || [];
+  if (dets.length === 0) {
+    table.style.display = 'none'; noRes.style.display = 'block';
+    return;
   }
   noRes.style.display = 'none'; table.style.display = 'table';
 
-  data.detections.forEach((det, i) => {
-    const col  = classColour(det.class_id);
-    const pct  = Math.round(det.confidence * 100);
-    const tr   = document.createElement('tr');
+  dets.forEach((det, i) => {
+    const col = getColor(det.class_id);
+    const pct = Math.round(det.confidence * 100);
+    const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="color:var(--text-muted)">${i + 1}</td>
-      <td><span class="class-chip" style="background:${col.bg};border-color:${col.border};color:${col.border}">
-        <span class="class-dot" style="background:${col.dot}"></span>${det.class_name}
+      <td><span class="class-tag" style="background:${col.bg};border-color:${col.border};color:${col.border}">
+        <span class="class-tag-dot" style="background:${col.dot}"></span>${det.class_name}
       </span></td>
       <td>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:13px">${det.confidence.toFixed(3)}</span>
-        <div class="conf-bar-wrap"><div class="conf-bar"><div class="conf-fill" style="width:${pct}%"></div></div></div>
+        <span class="conf-cell">${det.confidence.toFixed(3)}</span>
+        <div class="conf-bar"><div class="conf-fill" style="width:${pct}%"></div></div>
       </td>`;
     tbody.appendChild(tr);
   });
-  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function showError(msg) { errorMsg.textContent = msg; errorMsg.style.display = 'block'; }
-function hideError() { errorMsg.style.display = 'none'; }
+function showError(msg) { errorBanner.textContent = msg; errorBanner.style.display = 'block'; }
+function hideError() { errorBanner.style.display = 'none'; }
 
+/* ========= Init ========= */
 loadHealth();
-loadValidation();
 </script>
 </body>
 </html>
