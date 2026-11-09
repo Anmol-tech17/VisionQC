@@ -1,7 +1,7 @@
 # VisionQC: Detailed Phasewise Implementation Report
 
 This is the single authoritative phasewise implementation record for VisionQC.
-Updated through **Phase 5C (Integration)**.
+Updated through **Phase 6 (Final Implementation — GUI, CI/CD, Prometheus & Grafana)**.
 
 ---
 
@@ -90,7 +90,69 @@ Updated through **Phase 5C (Integration)**.
 * **Confirmed:** Docker/Airflow persistent data stored on D: (Ubuntu-D virtual disk + `/mnt/d/visionqc-airflow/`).
 * **Confirmed:** MLflow champion (`VisionQC-Detector@champion`, Version 2) and DVC config unmodified.
 * **Refinement:** Increased container memory limit in `docker-compose.yml` to 3 GB to provide PyTorch runtime headroom.
-* **Status:** ✅ Complete
+* **Status:** ✅ Complete (commit `a04008d`)
+
+---
+
+## Phase 6A: Modern Industrial GUI Redesign
+
+* **Objective:** Replace the basic frontend with a professional blue-and-black industrial inspection dashboard.
+* **Visual Direction:** Modern industrial AI aesthetic (`#080D18`, `#101827`, `#151F32`, `#3B82F6` accents).
+* **Key Features:**
+  * Multi-view navigation: Overview Dashboard, Inspection Interface, Model Information, System Status.
+  * Real PCB defect inspection with drag-and-drop file upload, thumbnail preview, and loading indicators.
+  * Interactive bounding box annotation overlay (OpenCV server-side rendering encoded as base64 JPEG).
+  * Detection table with confidence score progress bars and class-coded chips.
+  * Real-time server and round-trip inference latency indicators.
+  * Real system and model metadata pulled dynamically from `/health`.
+* **API Integration:** Enhanced `src/visionqc/api/main.py` with static HTML mounting at `/`, dynamic model fallback loading, and rich prediction responses (`annotated_image`, `detections`, `count`, `inference_time_ms`).
+* **Status:** ✅ Complete (commit `f85ca98`)
+
+---
+
+## Phase 6B: GitHub Actions CI/CD Pipeline
+
+* **Objective:** Implement automated testing, linting, and container build workflows using GitHub Actions.
+* **Workflows Created:**
+  * `.github/workflows/ci.yml`: Triggered on push to `main` and pull requests.
+    * Python 3.12 runner with CPU-only PyTorch and project dependencies.
+    * Import integrity validation (`src.visionqc.api.main`, `predictor`, `settings`).
+    * Training YAML configuration validation across all experiment configs.
+    * Automated test execution (`pytest tests/test_ci.py`).
+    * Python syntax linting using `py_compile`.
+  * `.github/workflows/docker.yml`: Triggered on push to `main` and manual dispatch.
+    * Docker Buildx build of the `visionqc-api` container image.
+    * Tagged with commit SHA and `latest`.
+    * Safe optional GHCR push (`continue-on-error: true`).
+* **Tests:** Created mock-isolated `tests/test_ci.py` (5 tests passing in CI without external weights).
+* **Documentation:** `docs/GITHUB_ACTIONS_CICD.md` with complete architecture and execution guides.
+* **Status:** ✅ Complete (commit `f548d63`)
+
+---
+
+## Phase 6C: Prometheus & Grafana Monitoring
+
+* **Objective:** Provide real-time operational telemetry for the FastAPI inference service.
+* **Prometheus Instrumentation:**
+  * Added `prometheus_client` middleware to FastAPI.
+  * Exposed `GET /metrics` excluding self-referential metrics traffic.
+  * Standard metrics: `http_requests_total`, `http_request_duration_seconds`, `http_requests_in_progress`.
+  * Domain-specific metrics: `visionqc_predictions_total` (by status), `visionqc_inference_duration_seconds` (YOLO latency histogram).
+* **Prometheus Configuration:**
+  * `monitoring/prometheus/prometheus.yml`: Scrapes `visionqc-api:8000/metrics` every 10s.
+  * 7-day TSDB retention, resource-capped container (0.5 CPU, 512 MB).
+* **Grafana Dashboard:**
+  * Auto-provisioned datasource pointing to Prometheus (`monitoring/grafana/provisioning/datasources/prometheus.yml`).
+  * Auto-provisioned dashboard `VisionQC API Monitoring` with 9 panels:
+    * Total API Requests (stat), Request Rate (stat), Avg Latency (stat), Total Predictions (stat).
+    * Request Rate Over Time (timeseries by endpoint).
+    * Response Latency p50/p95/p99 (timeseries).
+    * HTTP Status Codes Over Time (stacked bar chart).
+    * Model Inference Duration p50/p95 (timeseries).
+    * Predictions by Status (timeseries).
+* **Docker Compose:** `docker-compose.monitoring.yml` with isolated `visionqc-net` shared bridge network.
+* **Documentation:** `docs/MONITORING_GUIDE.md` detailing metrics, PromQL queries, traffic generation, and operations.
+* **Status:** ✅ Complete (commit `4ee733b`)
 
 ---
 
@@ -98,16 +160,17 @@ Updated through **Phase 5C (Integration)**.
 
 | Component | Status |
 |---|---|
-| Git + meaningful commits | ✅ Implemented |
+| Git + meaningful commits | ✅ Implemented (Phases 1–6) |
 | Fixed seed (42) | ✅ Implemented |
 | Baseline model | ✅ Phase 2 |
 | Candidate models | ✅ Phase 4A |
 | MLflow tracking & registry | ✅ Phase 3 |
 | DVC dataset versioning | ✅ Phase 3 |
-| FastAPI REST API | ✅ Phase 4B |
-| Docker (containerization) | ✅ **Phase 5A** |
-| Airflow orchestration | ✅ **Phase 5B** |
-| Unit + integration tests | ✅ Implemented |
-| CI/CD | Planned Phase 6 |
-| Monitoring / Drift detection | Planned Phase 6 |
-| Cloud deployment | Planned Phase 6 |
+| FastAPI REST API | ✅ Phase 4B & Phase 6A |
+| Docker (containerization) | ✅ Phase 5A |
+| Airflow orchestration | ✅ Phase 5B |
+| Unit + integration tests | ✅ Implemented (`test_api.py`, `test_ci.py`) |
+| CI/CD | ✅ **Phase 6B (GitHub Actions CI/CD)** |
+| Monitoring / Metrics | ✅ **Phase 6C (Prometheus & Grafana)** |
+| Industrial GUI | ✅ **Phase 6A (Industrial Inspection Dashboard)** |
+| Cloud deployment | Optional (Local Docker Engine verified) |
